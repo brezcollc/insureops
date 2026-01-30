@@ -1,6 +1,6 @@
-import { LossRunData, LossRunClaim } from "@/lib/api/lossRunParser";
+import { LossRunData } from "@/lib/api/lossRunParser";
 import { StatusBadge } from "@/components/StatusBadge";
-import { FileText, Building, Calendar, DollarSign } from "lucide-react";
+import { FileText } from "lucide-react";
 
 interface ParsedLossRunViewProps {
   data: LossRunData;
@@ -20,73 +20,51 @@ function formatDate(value: string | null): string {
   }
 }
 
-function ClaimStatusBadge({ status }: { status: string }) {
-  const normalizedStatus = status.toLowerCase();
-  if (normalizedStatus.includes("open")) {
+function ClaimStatusBadge({ status }: { status: "open" | "closed" | null }) {
+  if (status === "open") {
     return <StatusBadge status="in-progress" />;
   }
-  if (normalizedStatus.includes("closed")) {
+  if (status === "closed") {
     return <StatusBadge status="completed" />;
   }
-  return <StatusBadge status="review" />;
+  return <span className="text-muted-foreground text-sm">—</span>;
 }
 
 export function ParsedLossRunView({ data }: ParsedLossRunViewProps) {
-  const { document_info, claims, summary } = data;
+  const { claims } = data;
+
+  // Calculate summary stats
+  const totalClaims = claims.length;
+  const openClaims = claims.filter(c => c.status === "open").length;
+  const closedClaims = claims.filter(c => c.status === "closed").length;
+  const totalPaid = claims.reduce((sum, c) => sum + (c.paid_amount || 0), 0);
+  const totalIncurred = claims.reduce((sum, c) => sum + (c.incurred_amount || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Document Info Header */}
-      <div className="card-elevated p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
-            <FileText className="w-6 h-6 text-primary" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-foreground">{document_info.insured_name}</h3>
-            <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Carrier</p>
-                <p className="font-medium">{document_info.carrier_name}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Policy Number</p>
-                <p className="font-mono font-medium">{document_info.policy_number}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Line of Business</p>
-                <p className="font-medium">{document_info.line_of_business || "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Report Date</p>
-                <p className="font-medium">{formatDate(document_info.report_date)}</p>
-              </div>
-            </div>
-          </div>
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="stat-card">
+          <p className="text-sm text-muted-foreground">Total Claims</p>
+          <p className="text-2xl font-semibold">{totalClaims}</p>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-muted-foreground">Open</p>
+          <p className="text-2xl font-semibold">{openClaims}</p>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-muted-foreground">Closed</p>
+          <p className="text-2xl font-semibold">{closedClaims}</p>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-muted-foreground">Total Paid</p>
+          <p className="text-2xl font-semibold">{formatCurrency(totalPaid)}</p>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-muted-foreground">Total Incurred</p>
+          <p className="text-2xl font-semibold">{formatCurrency(totalIncurred)}</p>
         </div>
       </div>
-
-      {/* Summary Stats */}
-      {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="stat-card">
-            <p className="text-sm text-muted-foreground">Total Claims</p>
-            <p className="text-2xl font-semibold">{summary.total_claims ?? claims.length}</p>
-          </div>
-          <div className="stat-card">
-            <p className="text-sm text-muted-foreground">Open Claims</p>
-            <p className="text-2xl font-semibold">{summary.open_claims ?? "—"}</p>
-          </div>
-          <div className="stat-card">
-            <p className="text-sm text-muted-foreground">Total Paid</p>
-            <p className="text-2xl font-semibold">{formatCurrency(summary.total_paid)}</p>
-          </div>
-          <div className="stat-card">
-            <p className="text-sm text-muted-foreground">Total Incurred</p>
-            <p className="text-2xl font-semibold">{formatCurrency(summary.total_incurred)}</p>
-          </div>
-        </div>
-      )}
 
       {/* Claims Table */}
       <div className="card-elevated overflow-hidden">
@@ -100,26 +78,24 @@ export function ParsedLossRunView({ data }: ParsedLossRunViewProps) {
             <thead>
               <tr>
                 <th>Claim #</th>
-                <th>Status</th>
                 <th>Date of Loss</th>
-                <th>Claimant</th>
-                <th>Cause of Loss</th>
-                <th className="text-right">Total Paid</th>
-                <th className="text-right">Total Reserved</th>
-                <th className="text-right">Total Incurred</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th className="text-right">Paid</th>
+                <th className="text-right">Reserved</th>
+                <th className="text-right">Incurred</th>
               </tr>
             </thead>
             <tbody>
               {claims.map((claim, index) => (
                 <tr key={claim.claim_number || index}>
-                  <td className="font-mono font-medium">{claim.claim_number}</td>
-                  <td><ClaimStatusBadge status={claim.claim_status} /></td>
+                  <td className="font-mono font-medium">{claim.claim_number || "—"}</td>
                   <td>{formatDate(claim.date_of_loss)}</td>
-                  <td>{claim.claimant_name || "—"}</td>
-                  <td className="max-w-xs truncate">{claim.cause_of_loss || "—"}</td>
-                  <td className="text-right font-mono">{formatCurrency(claim.total_paid)}</td>
-                  <td className="text-right font-mono">{formatCurrency(claim.total_reserved)}</td>
-                  <td className="text-right font-mono font-medium">{formatCurrency(claim.total_incurred)}</td>
+                  <td className="max-w-xs truncate">{claim.description || "—"}</td>
+                  <td><ClaimStatusBadge status={claim.status} /></td>
+                  <td className="text-right font-mono">{formatCurrency(claim.paid_amount)}</td>
+                  <td className="text-right font-mono">{formatCurrency(claim.reserved_amount)}</td>
+                  <td className="text-right font-mono font-medium">{formatCurrency(claim.incurred_amount)}</td>
                 </tr>
               ))}
             </tbody>
