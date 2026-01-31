@@ -4,11 +4,30 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const Select = SelectPrimitive.Root;
+// Select root is a context provider - wrap to prevent ref warnings
+const Select = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>
+>(({ children, ...props }, _ref) => (
+  <SelectPrimitive.Root {...props}>{children}</SelectPrimitive.Root>
+));
+Select.displayName = "Select";
 
-const SelectGroup = SelectPrimitive.Group;
+// SelectGroup is a context provider - wrap to prevent ref warnings
+const SelectGroup = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Group>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Group>
+>(({ children, ...props }, _ref) => (
+  <SelectPrimitive.Group {...props}>{children}</SelectPrimitive.Group>
+));
+SelectGroup.displayName = "SelectGroup";
 
-const SelectValue = SelectPrimitive.Value;
+// SelectValue is a context consumer - wrap to prevent ref warnings
+const SelectValue = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Value>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>
+>((props, _ref) => <SelectPrimitive.Value {...props} />);
+SelectValue.displayName = "SelectValue";
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
