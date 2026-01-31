@@ -5,9 +5,10 @@ import { FileText, Upload, CheckCircle, Clock } from "lucide-react";
 
 interface DashboardViewProps {
   activeTab: string;
+  searchQuery?: string;
 }
 
-export function DashboardView({ activeTab }: DashboardViewProps) {
+export function DashboardView({ activeTab, searchQuery = "" }: DashboardViewProps) {
   if (activeTab === "documents") {
     return (
       <div className="p-8">
@@ -27,7 +28,7 @@ export function DashboardView({ activeTab }: DashboardViewProps) {
           <h2 className="text-2xl font-semibold text-foreground">Loss Run Requests</h2>
           <p className="text-muted-foreground">Track and manage all carrier loss run requests</p>
         </div>
-        <LossRunTable />
+        <LossRunTable searchQuery={searchQuery} />
       </div>
     );
   }
@@ -92,7 +93,7 @@ export function DashboardView({ activeTab }: DashboardViewProps) {
       </div>
 
       {/* Recent Activity */}
-      <LossRunTable />
+      <LossRunTable searchQuery={searchQuery} />
     </div>
   );
 }
