@@ -14,16 +14,194 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      carriers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          loss_run_email: string
+          name: string
+          phone: string | null
+          underwriter_email: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          loss_run_email: string
+          name: string
+          phone?: string | null
+          underwriter_email?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          loss_run_email?: string
+          name?: string
+          phone?: string | null
+          underwriter_email?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          address: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_logs: {
+        Row: {
+          body: string
+          created_by: string | null
+          email_type: Database["public"]["Enums"]["email_type"]
+          id: string
+          recipient: string
+          request_id: string
+          sent_at: string
+          subject: string
+        }
+        Insert: {
+          body: string
+          created_by?: string | null
+          email_type: Database["public"]["Enums"]["email_type"]
+          id?: string
+          recipient: string
+          request_id: string
+          sent_at?: string
+          subject: string
+        }
+        Update: {
+          body?: string
+          created_by?: string | null
+          email_type?: Database["public"]["Enums"]["email_type"]
+          id?: string
+          recipient?: string
+          request_id?: string
+          sent_at?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "loss_run_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loss_run_requests: {
+        Row: {
+          carrier_id: string
+          client_id: string
+          coverage_type: Database["public"]["Enums"]["coverage_type"]
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          policy_effective_date: string | null
+          policy_expiration_date: string | null
+          policy_number: string
+          request_date: string
+          status: Database["public"]["Enums"]["loss_run_status"]
+          updated_at: string
+        }
+        Insert: {
+          carrier_id: string
+          client_id: string
+          coverage_type: Database["public"]["Enums"]["coverage_type"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          policy_effective_date?: string | null
+          policy_expiration_date?: string | null
+          policy_number: string
+          request_date?: string
+          status?: Database["public"]["Enums"]["loss_run_status"]
+          updated_at?: string
+        }
+        Update: {
+          carrier_id?: string
+          client_id?: string
+          coverage_type?: Database["public"]["Enums"]["coverage_type"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          policy_effective_date?: string | null
+          policy_expiration_date?: string | null
+          policy_number?: string
+          request_date?: string
+          status?: Database["public"]["Enums"]["loss_run_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loss_run_requests_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loss_run_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_authenticated: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      coverage_type:
+        | "general_liability"
+        | "workers_compensation"
+        | "commercial_auto"
+        | "commercial_property"
+        | "professional_liability"
+        | "umbrella"
+        | "other"
+      email_type: "initial_request" | "follow_up" | "reminder"
+      loss_run_status: "requested" | "follow_up_sent" | "received" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +328,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      coverage_type: [
+        "general_liability",
+        "workers_compensation",
+        "commercial_auto",
+        "commercial_property",
+        "professional_liability",
+        "umbrella",
+        "other",
+      ],
+      email_type: ["initial_request", "follow_up", "reminder"],
+      loss_run_status: ["requested", "follow_up_sent", "received", "completed"],
+    },
   },
 } as const

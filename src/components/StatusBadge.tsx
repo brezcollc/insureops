@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type StatusType = "pending" | "in-progress" | "completed" | "review";
+type StatusType = "pending" | "in-progress" | "completed" | "review" | "requested" | "follow_up_sent" | "received";
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -24,10 +24,22 @@ const statusConfig: Record<StatusType, { label: string; className: string }> = {
     label: "Under Review",
     className: "bg-muted text-muted-foreground",
   },
+  requested: {
+    label: "Requested",
+    className: "bg-status-pending-bg text-status-pending",
+  },
+  follow_up_sent: {
+    label: "Follow-Up Sent",
+    className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  },
+  received: {
+    label: "Received",
+    className: "bg-status-in-progress-bg text-status-in-progress",
+  },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] || statusConfig.pending;
   
   return (
     <span
