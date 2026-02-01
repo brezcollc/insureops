@@ -8,10 +8,11 @@ const corsHeaders = {
 };
 
 interface AgentAction {
-  action: "send_follow_up" | "update_status" | "add_note" | "wait";
+  action: "send_follow_up" | "parse_document" | "generate_summary" | "update_status" | "add_note" | "wait";
   reason: string;
   new_status?: string;
   note?: string;
+  summary?: string;
 }
 
 const AGENT_TOOLS = [
@@ -25,7 +26,7 @@ const AGENT_TOOLS = [
         properties: {
           action: {
             type: "string",
-            enum: ["send_follow_up", "update_status", "add_note", "wait"],
+            enum: ["send_follow_up", "parse_document", "generate_summary", "update_status", "add_note", "wait"],
             description: "The action to take",
           },
           reason: {
@@ -34,12 +35,16 @@ const AGENT_TOOLS = [
           },
           new_status: {
             type: "string",
-            enum: ["requested", "follow_up_sent", "received", "completed"],
-            description: "New status if action is update_status",
+            enum: ["requested", "follow_up_sent", "received"],
+            description: "New status if action is update_status. NOTE: 'completed' requires human review and cannot be set by the agent.",
           },
           note: {
             type: "string",
             description: "Note content if action is add_note",
+          },
+          summary: {
+            type: "string",
+            description: "Summary content if action is generate_summary",
           },
         },
         required: ["action", "reason"],
@@ -51,15 +56,18 @@ const AGENT_TOOLS = [
 
 const SYSTEM_PROMPT = `You are an insurance operations agent processing loss run requests.
 
-Your objective: Move each request from "requested" to "completed" efficiently.
+Your objective: Move each request toward completion efficiently while respecting human oversight.
 
 Available actions:
 - send_follow_up: Send a follow-up email to the carrier (use if request is >7 days old with no response)
-- update_status: Change the request status (use when document received or processing complete)
+- parse_document: Trigger AI parsing of a received loss run document to extract claim data
+- generate_summary: Create a summary of the request status and any parsed data for human review
+- update_status: Change the request status (ONLY to "requested", "follow_up_sent", or "received" - NEVER "completed")
 - add_note: Add an internal note to the request (use to document important observations)
 - wait: No action needed at this time
 
-Rules:
+CRITICAL RULES:
+- NEVER set status to "completed" - this requires human review and approval
 - NEVER provide insurance advice
 - NEVER infer or fabricate missing data
 - All outputs require licensed professional review
@@ -67,6 +75,7 @@ Rules:
 - If the request is already "completed", always return "wait"
 - If the request was recently created (<3 days) and status is "requested", return "wait"
 - If follow-up was already sent recently (<7 days), return "wait"
+- When status is "received", consider generating a summary for human review
 
 Analyze the request state and decide the single best next action.`;
 
@@ -238,12 +247,53 @@ What is the next best action for this request?`;
       }
 
       case "update_status": {
+        // CRITICAL: Block any attempt to set status to "completed" - requires human review
+        if (decision.new_status === "completed") {
+          actionResult = { 
+            executed: false, 
+            details: "Cannot set status to 'completed' - requires human review and approval" 
+          };
+          break;
+        }
         if (decision.new_status) {
           await supabase
             .from("loss_run_requests")
             .update({ status: decision.new_status })
             .eq("id", requestId);
           actionResult = { executed: true, details: `Status updated to ${decision.new_status}` };
+        }
+        break;
+      }
+
+      case "parse_document": {
+        // Add note indicating document parsing was triggered
+        const existingNotes = request.notes || "";
+        const timestamp = new Date().toISOString().split("T")[0];
+        const parseNote = `[${timestamp}] Agent: Document parsing triggered. Awaiting document upload for processing.`;
+        const newNotes = existingNotes ? `${existingNotes}\n\n${parseNote}` : parseNote;
+        
+        await supabase
+          .from("loss_run_requests")
+          .update({ notes: newNotes })
+          .eq("id", requestId);
+        actionResult = { executed: true, details: "Document parsing initiated - awaiting document upload" };
+        break;
+      }
+
+      case "generate_summary": {
+        if (decision.summary) {
+          const existingNotes = request.notes || "";
+          const timestamp = new Date().toISOString().split("T")[0];
+          const summaryNote = `[${timestamp}] Agent Summary:\n${decision.summary}\n\n⚠️ REQUIRES HUMAN REVIEW before marking as completed.`;
+          const newNotes = existingNotes ? `${existingNotes}\n\n${summaryNote}` : summaryNote;
+          
+          await supabase
+            .from("loss_run_requests")
+            .update({ notes: newNotes })
+            .eq("id", requestId);
+          actionResult = { executed: true, details: "Summary generated and added to notes - awaiting human review" };
+        } else {
+          actionResult = { executed: false, details: "No summary content provided" };
         }
         break;
       }
