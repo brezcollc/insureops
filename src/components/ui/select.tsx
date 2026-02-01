@@ -77,11 +77,20 @@ const SelectScrollDownButton = React.forwardRef<
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
 
+// SelectPortal wrapper to prevent ref warnings
+const SelectPortal = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Portal>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Portal>
+>(({ children, ...props }, _ref) => (
+  <SelectPrimitive.Portal {...props}>{children}</SelectPrimitive.Portal>
+));
+SelectPortal.displayName = "SelectPortal";
+
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
+  <SelectPortal>
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
@@ -105,7 +114,7 @@ const SelectContent = React.forwardRef<
       </SelectPrimitive.Viewport>
       <SelectScrollDownButton />
     </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
+  </SelectPortal>
 ));
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
