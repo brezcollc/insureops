@@ -15,7 +15,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Loader2, Mail, Send } from "lucide-react";
+import { Bot, Loader2, Mail, Send } from "lucide-react";
 import {
   LossRunRequest,
   useEmailLogs,
@@ -23,6 +23,7 @@ import {
   useResendEmail,
   LossRunStatus,
 } from "@/hooks/useLossRunRequests";
+import { useAgentAction } from "@/hooks/useAgentAction";
 import { useToast } from "@/hooks/use-toast";
 
 interface RequestDetailViewProps {
@@ -53,6 +54,12 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
   const { data: emailLogs, isLoading: logsLoading } = useEmailLogs(request?.id || null);
   const updateStatus = useUpdateLossRunStatus();
   const resendEmail = useResendEmail();
+  const agentAction = useAgentAction();
+
+  const handleRunAgent = async () => {
+    if (!request) return;
+    await agentAction.mutateAsync(request.id);
+  };
 
   if (!request) return null;
 
@@ -179,7 +186,19 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
                 </SelectContent>
               </Select>
             </div>
-            <div className="pt-6">
+            <div className="pt-6 flex gap-2">
+              <Button
+                variant="default"
+                onClick={handleRunAgent}
+                disabled={agentAction.isPending}
+              >
+                {agentAction.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Bot className="w-4 h-4 mr-2" />
+                )}
+                Run Agent
+              </Button>
               <Button
                 variant="outline"
                 onClick={handleResendEmail}
