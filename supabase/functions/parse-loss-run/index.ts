@@ -13,19 +13,45 @@ const LOSS_RUN_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          claim_number: { type: "string", description: "Claim number exactly as written, or null if not shown" },
-          date_of_loss: { type: "string", description: "Date of loss (YYYY-MM-DD format), or null if not shown" },
-          description: { type: "string", description: "Description or cause of loss exactly as written, or null if not shown" },
-          paid_amount: { type: "number", description: "Total paid amount as a number, or null if not shown" },
-          reserved_amount: { type: "number", description: "Total reserved amount as a number, or null if not shown" },
-          incurred_amount: { type: "number", description: "Total incurred amount (paid + reserved), or null if not shown" },
-          status: { type: "string", enum: ["open", "closed"], description: "Claim status: 'open' or 'closed', or null if unclear" },
+          claim_number: { type: ["string", "null"], description: "Claim number exactly as written in the document, or null if not found" },
+          date_of_loss: { type: ["string", "null"], description: "Date of loss (YYYY-MM-DD format) exactly as shown, or null if not found" },
+          description: { type: ["string", "null"], description: "Description verbatim from document, or null if not found" },
+          paid_amount: { type: ["number", "null"], description: "Paid amount as shown (0 if explicitly $0), or null if not shown" },
+          reserved_amount: { type: ["number", "null"], description: "Reserved amount as shown (0 if explicitly $0), or null if not shown" },
+          incurred_amount: { type: ["number", "null"], description: "Incurred amount as shown (0 if explicitly $0), or null if not shown" },
+          status: { type: ["string", "null"], enum: ["open", "closed", null], description: "Status exactly as indicated, or null if unclear" },
         },
         additionalProperties: false,
       },
     },
+    _debug: {
+      type: "object",
+      properties: {
+        claims_table_detected: { type: "boolean", description: "Whether a claims table section was found in the document" },
+        claim_rows_detected: { type: "number", description: "Number of claim rows detected (excluding totals/summary)" },
+        evidence_map: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              claim_index: { type: "number" },
+              claim_number_evidence: { type: ["string", "null"], description: "Verbatim text from document for claim number" },
+              date_of_loss_evidence: { type: ["string", "null"], description: "Verbatim text from document for date" },
+              paid_amount_evidence: { type: ["string", "null"], description: "Verbatim text from document for paid amount" },
+              reserved_amount_evidence: { type: ["string", "null"], description: "Verbatim text from document for reserved" },
+              incurred_amount_evidence: { type: ["string", "null"], description: "Verbatim text from document for incurred" },
+              description_evidence: { type: ["string", "null"], description: "Verbatim text from document for description" },
+              status_evidence: { type: ["string", "null"], description: "Verbatim text from document for status" },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["claims_table_detected", "claim_rows_detected", "evidence_map"],
+      additionalProperties: false,
+    },
   },
-  required: ["claims"],
+  required: ["claims", "_debug"],
   additionalProperties: false,
 };
 
@@ -53,57 +79,53 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an insurance loss run document parser.
+    const systemPrompt = `You are an insurance loss run document parser with ZERO TOLERANCE for hallucination.
 
-Your task is to extract structured claim data EXACTLY as written in the provided loss run document.
+CRITICAL RULE: EVIDENCE-BASED EXTRACTION ONLY
+You must NEVER invent, guess, assume, or fabricate any data. Every extracted value MUST have exact textual evidence from the document.
 
-STRICT RULES:
-- Do NOT infer, calculate, or estimate any values
-- Do NOT combine fields unless explicitly shown together
-- Do NOT interpret coverage, claim quality, or loss severity
-- Do NOT alter carrier terminology - use exact wording from the document
-- If a field is missing, unclear, or not explicitly shown, return null
-- Dates should be formatted as YYYY-MM-DD when possible, or null if unclear
-- Currency amounts should be numbers without formatting (e.g., 15000.50 not "$15,000.50")
-- Extract ALL claims shown in the document
-- Ignore rows labeled "Total", "Totals", or "Summary"
+HARD STOP RULES (NON-NEGOTIABLE):
 
-DESCRIPTION EXTRACTION RULES (CRITICAL):
+1. EVIDENCE REQUIREMENT:
+   - For EVERY field you extract, you MUST be able to point to exact text in the document
+   - If you cannot find verbatim evidence for a field, that field MUST be null
+   - If you cannot find a clear claim row with at least a claim number OR clear row boundary, do NOT create a claim
 
-1. PRIMARY RULE - Explicit Description Columns:
-   If a column header explicitly contains "Description", "Loss Description", or "Claim Description":
-   - Extract description ONLY from that column
-   - Use text verbatim exactly as written
+2. NO-CLAIMS HANDLING:
+   - If the document states "no claims", "no losses", "loss-free", or similar, return: { "claims": [], "_debug": {...} }
+   - If the claims table is empty or contains only headers/totals, return empty claims array
+   - NEVER generate a placeholder claim. NEVER invent data.
 
-2. SECONDARY RULE - Implicit Narrative Columns:
-   If NO explicit description column exists:
-   - Identify a column containing free-text narrative sentences per claim row
-   - This column may be unlabeled or generically labeled (e.g., "Details", "Narrative", blank header)
-   - The text typically consists of one or more sentences describing the loss event
-   - Extract this narrative text verbatim as the description
+3. ZERO-DOLLAR VALUES:
+   - If a value is explicitly shown as $0, 0, 0.00, or similar, extract as 0 (numeric zero)
+   - If a value is blank, missing, or not shown, extract as null (NOT zero)
+   - Zero and null are NOT the same. Zero means explicitly shown as zero. Null means not present.
 
-3. STRICT EXCLUSIONS - Never extract description from columns labeled:
-   - "Cause"
-   - "Type"  
-   - "Coverage"
-   - "Class"
-   - "Nature"
-   - "Status"
-   - Do NOT combine text from multiple columns
-   - Do NOT summarize, rephrase, or normalize narrative text
+4. TABLE-FIRST PARSING:
+   - ONLY extract claim data from the claims table section
+   - IGNORE policy info blocks, headers, narrative summaries, footer text
+   - IGNORE rows labeled "Total", "Totals", "Summary", "Grand Total"
+   - Each claim must come from a distinct row in the claims table
 
-4. AMBIGUITY HANDLING:
-   - If multiple columns could plausibly be narrative text: return null for description
-   - If narrative text appears to span multiple columns: return null for description
+5. DESCRIPTION EXTRACTION (if applicable):
+   - Primary: Extract from columns labeled "Description", "Loss Description", or "Claim Description"
+   - Secondary: If no explicit column, look for unlabeled narrative text column with sentences
+   - NEVER extract from columns labeled: "Cause", "Type", "Coverage", "Class", "Nature", "Status"
+   - If ambiguous, return null for description
 
-5. NUMERIC ADJACENCY RULE:
-   - Do NOT treat numeric columns or totals as narrative
-   - Numeric-only fields are never descriptions
+6. FORMAT REQUIREMENTS:
+   - Dates: YYYY-MM-DD format (extract exactly as shown, convert format only)
+   - Currency: Numbers only, no symbols (e.g., 15000.50 not "$15,000.50")
+   - Status: "open" or "closed" only, or null if unclear
 
-6. OUTPUT REQUIREMENTS:
-   - Extract description text verbatim, exactly as written
-   - Preserve punctuation and sentence structure
-   - If no valid narrative text exists per claim row, return null
+7. DEBUG EVIDENCE:
+   - For each claim, provide the exact text evidence from the document in the _debug.evidence_map
+   - evidence_map entries must contain the verbatim text you found, or null if not found
+
+VALIDATION CHECK (before returning):
+- For each claim: Can I quote the exact text from the document for each non-null field?
+- If NO: Set that field to null
+- If I cannot justify ANY claim row from the document: Return empty claims array
 
 This is for internal brokerage operations. All outputs require review by licensed insurance professionals before use.`;
 
@@ -115,16 +137,17 @@ This is for internal brokerage operations. All outputs require review by license
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
+        temperature: 0,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Parse this loss run document and extract all claim data:\n\n${documentText}` },
+          { role: "user", content: `Parse this loss run document. Extract ONLY what is explicitly present. If no claims exist, return an empty claims array. NEVER fabricate data.\n\nDocument text:\n\n${documentText}` },
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "extract_loss_run_data",
-              description: "Extract structured data from a loss run document",
+              description: "Extract structured claim data from a loss run document. Only extract data with explicit textual evidence. Return empty claims array if no claims exist.",
               parameters: LOSS_RUN_SCHEMA,
             },
           },
