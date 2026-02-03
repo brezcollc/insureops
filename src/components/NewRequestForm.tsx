@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,14 +18,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, FileText } from "lucide-react";
 import {
   useClients,
-  useCarriers,
   useCreateLossRunRequest,
   useCreateClient,
   CoverageType,
 } from "@/hooks/useLossRunRequests";
+import { usePoliciesByClient, Policy } from "@/hooks/usePolicies";
 
 interface NewRequestFormProps {
   open: boolean;
@@ -34,54 +34,74 @@ interface NewRequestFormProps {
   preselectedClientId?: string;
 }
 
-const coverageTypes: { value: CoverageType; label: string }[] = [
-  { value: "general_liability", label: "General Liability" },
-  { value: "workers_compensation", label: "Workers' Compensation" },
-  { value: "commercial_auto", label: "Commercial Auto" },
-  { value: "commercial_property", label: "Commercial Property" },
-  { value: "professional_liability", label: "Professional Liability" },
-  { value: "umbrella", label: "Umbrella" },
-  { value: "other", label: "Other" },
-];
+const coverageTypeLabels: Record<CoverageType, string> = {
+  general_liability: "General Liability",
+  workers_compensation: "Workers' Compensation",
+  commercial_auto: "Commercial Auto",
+  commercial_property: "Commercial Property",
+  professional_liability: "Professional Liability",
+  umbrella: "Umbrella",
+  other: "Other",
+};
 
 export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClientId }: NewRequestFormProps) {
   const { toast } = useToast();
   const { data: clients, isLoading: clientsLoading } = useClients();
-  const { data: carriers, isLoading: carriersLoading } = useCarriers();
   const createRequest = useCreateLossRunRequest();
   const createClient = useCreateClient();
 
-  const [formData, setFormData] = useState({
-    client_id: preselectedClientId || "",
-    carrier_id: "",
-    policy_number: "",
-    coverage_type: "" as CoverageType | "",
-    policy_effective_date: "",
-    policy_expiration_date: "",
-    notes: "",
-  });
+  const [clientId, setClientId] = useState(preselectedClientId || "");
+  const [selectedPolicyId, setSelectedPolicyId] = useState("");
+  const [policyEffectiveDate, setPolicyEffectiveDate] = useState("");
+  const [policyExpirationDate, setPolicyExpirationDate] = useState("");
+  const [notes, setNotes] = useState("");
 
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
 
+  // Fetch policies for selected client
+  const { data: policies, isLoading: policiesLoading } = usePoliciesByClient(clientId || null);
+
+  // Get the selected policy details
+  const selectedPolicy = useMemo(() => {
+    if (!selectedPolicyId || !policies) return null;
+    return policies.find((p) => p.id === selectedPolicyId) || null;
+  }, [selectedPolicyId, policies]);
+
+  // Check if we're in client-scoped mode (client pre-selected)
+  const isClientScoped = !!preselectedClientId;
+
   // Update client_id when preselectedClientId changes
   React.useEffect(() => {
     if (preselectedClientId && open) {
-      setFormData((prev) => ({ ...prev, client_id: preselectedClientId }));
+      setClientId(preselectedClientId);
     }
   }, [preselectedClientId, open]);
 
+  // Reset policy selection when client changes
+  React.useEffect(() => {
+    setSelectedPolicyId("");
+    setPolicyEffectiveDate("");
+    setPolicyExpirationDate("");
+  }, [clientId]);
+
+  // Auto-fill dates when policy is selected
+  React.useEffect(() => {
+    if (selectedPolicy) {
+      setPolicyEffectiveDate(selectedPolicy.effective_date || "");
+      setPolicyExpirationDate(selectedPolicy.expiration_date || "");
+    }
+  }, [selectedPolicy]);
+
   const resetForm = () => {
-    setFormData({
-      client_id: "",
-      carrier_id: "",
-      policy_number: "",
-      coverage_type: "",
-      policy_effective_date: "",
-      policy_expiration_date: "",
-      notes: "",
-    });
+    if (!isClientScoped) {
+      setClientId("");
+    }
+    setSelectedPolicyId("");
+    setPolicyEffectiveDate("");
+    setPolicyExpirationDate("");
+    setNotes("");
     setShowNewClient(false);
     setNewClientName("");
     setNewClientEmail("");
@@ -103,7 +123,7 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
         contact_email: newClientEmail.trim() || undefined,
       });
       
-      setFormData((prev) => ({ ...prev, client_id: client.id }));
+      setClientId(client.id);
       setShowNewClient(false);
       setNewClientName("");
       setNewClientEmail("");
@@ -123,35 +143,27 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
   };
 
   const handleSubmit = async () => {
-    console.log("[NewRequestForm] Submit clicked", formData);
+    console.log("[NewRequestForm] Submit clicked", { clientId, selectedPolicyId });
 
     // Validation
-    if (!formData.client_id) {
+    if (!clientId) {
       toast({ title: "Validation Error", description: "Please select a client", variant: "destructive" });
       return;
     }
-    if (!formData.carrier_id) {
-      toast({ title: "Validation Error", description: "Please select a carrier", variant: "destructive" });
-      return;
-    }
-    if (!formData.policy_number.trim()) {
-      toast({ title: "Validation Error", description: "Policy number is required", variant: "destructive" });
-      return;
-    }
-    if (!formData.coverage_type) {
-      toast({ title: "Validation Error", description: "Please select a coverage type", variant: "destructive" });
+    if (!selectedPolicyId || !selectedPolicy) {
+      toast({ title: "Validation Error", description: "Please select a policy", variant: "destructive" });
       return;
     }
 
     try {
       const request = await createRequest.mutateAsync({
-        client_id: formData.client_id,
-        carrier_id: formData.carrier_id,
-        policy_number: formData.policy_number.trim(),
-        coverage_type: formData.coverage_type as CoverageType,
-        policy_effective_date: formData.policy_effective_date || undefined,
-        policy_expiration_date: formData.policy_expiration_date || undefined,
-        notes: formData.notes.trim() || undefined,
+        client_id: clientId,
+        carrier_id: selectedPolicy.carrier_id,
+        policy_number: selectedPolicy.policy_number,
+        coverage_type: selectedPolicy.coverage_type,
+        policy_effective_date: policyEffectiveDate || undefined,
+        policy_expiration_date: policyExpirationDate || undefined,
+        notes: notes.trim() || undefined,
       });
 
       console.log("[NewRequestForm] Request created:", request.id);
@@ -174,7 +186,14 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
     }
   };
 
-  const selectedCarrier = carriers?.find((c) => c.id === formData.carrier_id);
+  // Format policy option label
+  const formatPolicyLabel = (policy: Policy) => {
+    const coverageLabel = coverageTypeLabels[policy.coverage_type] || policy.coverage_type;
+    const carrierName = policy.carriers?.name || "Unknown Carrier";
+    return `${coverageLabel} – ${carrierName} – ${policy.policy_number}`;
+  };
+
+  const selectedClient = clients?.find((c) => c.id === clientId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -182,15 +201,19 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
         <DialogHeader>
           <DialogTitle>Create Loss Run Request</DialogTitle>
           <DialogDescription>
-            Submit a new loss run request. An email will be automatically sent to the carrier.
+            Select a policy to request loss run history. An email will be automatically sent to the carrier.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Client Selection */}
+          {/* Client Selection - Read-only if pre-selected */}
           <div className="space-y-2">
             <Label htmlFor="client">Client *</Label>
-            {showNewClient ? (
+            {isClientScoped && selectedClient ? (
+              <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+                <span className="font-medium">{selectedClient.name}</span>
+              </div>
+            ) : showNewClient ? (
               <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
                 <Input
                   placeholder="Client name"
@@ -224,8 +247,8 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
             ) : (
               <div className="flex gap-2">
                 <Select
-                  value={formData.client_id}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, client_id: value }))}
+                  value={clientId}
+                  onValueChange={setClientId}
                   disabled={clientsLoading}
                 >
                   <SelectTrigger className="flex-1">
@@ -251,84 +274,103 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
             )}
           </div>
 
-          {/* Carrier Selection */}
+          {/* Policy Selection - Primary change */}
           <div className="space-y-2">
-            <Label htmlFor="carrier">Carrier *</Label>
-            <Select
-              value={formData.carrier_id}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, carrier_id: value }))}
-              disabled={carriersLoading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={carriersLoading ? "Loading..." : "Select carrier"} />
-              </SelectTrigger>
-              <SelectContent>
-                {carriers?.map((carrier) => (
-                  <SelectItem key={carrier.id} value={carrier.id}>
-                    {carrier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedCarrier && (
-              <p className="text-xs text-muted-foreground">
-                Email will be sent to: {selectedCarrier.loss_run_email}
-              </p>
+            <Label htmlFor="policy">Policy *</Label>
+            {!clientId ? (
+              <p className="text-sm text-muted-foreground italic">Select a client first</p>
+            ) : policiesLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading policies...
+              </div>
+            ) : policies && policies.length > 0 ? (
+              <Select
+                value={selectedPolicyId}
+                onValueChange={setSelectedPolicyId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a policy" />
+                </SelectTrigger>
+                <SelectContent>
+                  {policies.map((policy) => (
+                    <SelectItem key={policy.id} value={policy.id}>
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span>{formatPolicyLabel(policy)}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="p-3 border border-dashed rounded-lg bg-muted/30 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No policies found for this client.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add a policy to the client first.
+                </p>
+              </div>
             )}
           </div>
 
-          {/* Policy Number */}
-          <div className="space-y-2">
-            <Label htmlFor="policy_number">Policy Number *</Label>
-            <Input
-              id="policy_number"
-              placeholder="e.g., WC-1234567"
-              value={formData.policy_number}
-              onChange={(e) => setFormData((prev) => ({ ...prev, policy_number: e.target.value }))}
-            />
-          </div>
-
-          {/* Coverage Type */}
-          <div className="space-y-2">
-            <Label htmlFor="coverage_type">Coverage Type / Line of Business *</Label>
-            <Select
-              value={formData.coverage_type}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, coverage_type: value as CoverageType }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select coverage type" />
-              </SelectTrigger>
-              <SelectContent>
-                {coverageTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Policy Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="policy_effective_date">Effective Date</Label>
-              <Input
-                id="policy_effective_date"
-                type="date"
-                value={formData.policy_effective_date}
-                onChange={(e) => setFormData((prev) => ({ ...prev, policy_effective_date: e.target.value }))}
-              />
+          {/* Auto-filled fields - Read-only display */}
+          {selectedPolicy && (
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <FileText className="w-4 h-4" />
+                Policy Details (Auto-filled)
+              </div>
+              
+              <div className="grid gap-3">
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Carrier</Label>
+                    <p className="font-medium">{selectedPolicy.carriers?.name || "Unknown"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Coverage Type</Label>
+                    <p className="font-medium">{coverageTypeLabels[selectedPolicy.coverage_type]}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Policy Number</Label>
+                    <p className="font-mono font-medium">{selectedPolicy.policy_number}</p>
+                  </div>
+                </div>
+                
+                {selectedPolicy.carriers?.loss_run_email && (
+                  <p className="text-xs text-muted-foreground">
+                    Email will be sent to: {selectedPolicy.carriers.loss_run_email}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="policy_expiration_date">Expiration Date</Label>
-              <Input
-                id="policy_expiration_date"
-                type="date"
-                value={formData.policy_expiration_date}
-                onChange={(e) => setFormData((prev) => ({ ...prev, policy_expiration_date: e.target.value }))}
-              />
+          )}
+
+          {/* Policy Dates - Editable overrides */}
+          {selectedPolicy && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="policy_effective_date">Effective Date</Label>
+                <Input
+                  id="policy_effective_date"
+                  type="date"
+                  value={policyEffectiveDate}
+                  onChange={(e) => setPolicyEffectiveDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="policy_expiration_date">Expiration Date</Label>
+                <Input
+                  id="policy_expiration_date"
+                  type="date"
+                  value={policyExpirationDate}
+                  onChange={(e) => setPolicyExpirationDate(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-2">
@@ -336,8 +378,8 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
             <Textarea
               id="notes"
               placeholder="Additional information for the request..."
-              value={formData.notes}
-              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               rows={3}
             />
           </div>
@@ -347,7 +389,10 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={createRequest.isPending}>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={createRequest.isPending || !selectedPolicy}
+          >
             {createRequest.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Create & Send Request
           </Button>
