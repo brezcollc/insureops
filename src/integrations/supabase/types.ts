@@ -55,7 +55,11 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          industry: string | null
+          internal_notes: string | null
           name: string
+          renewal_date: string | null
+          status: string | null
           updated_at: string
         }
         Insert: {
@@ -65,7 +69,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          industry?: string | null
+          internal_notes?: string | null
           name: string
+          renewal_date?: string | null
+          status?: string | null
           updated_at?: string
         }
         Update: {
@@ -75,7 +83,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          industry?: string | null
+          internal_notes?: string | null
           name?: string
+          renewal_date?: string | null
+          status?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -177,6 +189,63 @@ export type Database = {
           },
           {
             foreignKeyName: "loss_run_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policies: {
+        Row: {
+          carrier_id: string
+          client_id: string
+          coverage_type: Database["public"]["Enums"]["coverage_type"]
+          created_at: string
+          created_by: string | null
+          effective_date: string | null
+          expiration_date: string | null
+          id: string
+          notes: string | null
+          policy_number: string
+          updated_at: string
+        }
+        Insert: {
+          carrier_id: string
+          client_id: string
+          coverage_type: Database["public"]["Enums"]["coverage_type"]
+          created_at?: string
+          created_by?: string | null
+          effective_date?: string | null
+          expiration_date?: string | null
+          id?: string
+          notes?: string | null
+          policy_number: string
+          updated_at?: string
+        }
+        Update: {
+          carrier_id?: string
+          client_id?: string
+          coverage_type?: Database["public"]["Enums"]["coverage_type"]
+          created_at?: string
+          created_by?: string | null
+          effective_date?: string | null
+          expiration_date?: string | null
+          id?: string
+          notes?: string | null
+          policy_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policies_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policies_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"

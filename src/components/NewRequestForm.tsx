@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +31,7 @@ interface NewRequestFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  preselectedClientId?: string;
 }
 
 const coverageTypes: { value: CoverageType; label: string }[] = [
@@ -43,7 +44,7 @@ const coverageTypes: { value: CoverageType; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-export function NewRequestForm({ open, onOpenChange, onSuccess }: NewRequestFormProps) {
+export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClientId }: NewRequestFormProps) {
   const { toast } = useToast();
   const { data: clients, isLoading: clientsLoading } = useClients();
   const { data: carriers, isLoading: carriersLoading } = useCarriers();
@@ -51,7 +52,7 @@ export function NewRequestForm({ open, onOpenChange, onSuccess }: NewRequestForm
   const createClient = useCreateClient();
 
   const [formData, setFormData] = useState({
-    client_id: "",
+    client_id: preselectedClientId || "",
     carrier_id: "",
     policy_number: "",
     coverage_type: "" as CoverageType | "",
@@ -63,6 +64,13 @@ export function NewRequestForm({ open, onOpenChange, onSuccess }: NewRequestForm
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
+
+  // Update client_id when preselectedClientId changes
+  React.useEffect(() => {
+    if (preselectedClientId && open) {
+      setFormData((prev) => ({ ...prev, client_id: preselectedClientId }));
+    }
+  }, [preselectedClientId, open]);
 
   const resetForm = () => {
     setFormData({
