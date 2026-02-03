@@ -1,14 +1,11 @@
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
-  FileText, 
-  Upload, 
-  ClipboardList,
+  Building2,
   Settings,
   HelpCircle,
   Shield
 } from "lucide-react";
-import { useState } from "react";
 
 interface SidebarProps {
   activeTab: string;
@@ -16,10 +13,8 @@ interface SidebarProps {
 }
 
 const navigation = [
+  { id: "clients", label: "Clients", icon: Building2 },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "loss-runs", label: "Loss Run Requests", icon: FileText },
-  { id: "documents", label: "Document Intake", icon: Upload },
-  { id: "data-prep", label: "Data Preparation", icon: ClipboardList },
 ];
 
 const bottomNavigation = [
