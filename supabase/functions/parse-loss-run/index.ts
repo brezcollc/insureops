@@ -66,6 +66,44 @@ STRICT RULES:
 - Dates should be formatted as YYYY-MM-DD when possible, or null if unclear
 - Currency amounts should be numbers without formatting (e.g., 15000.50 not "$15,000.50")
 - Extract ALL claims shown in the document
+- Ignore rows labeled "Total", "Totals", or "Summary"
+
+DESCRIPTION EXTRACTION RULES (CRITICAL):
+
+1. PRIMARY RULE - Explicit Description Columns:
+   If a column header explicitly contains "Description", "Loss Description", or "Claim Description":
+   - Extract description ONLY from that column
+   - Use text verbatim exactly as written
+
+2. SECONDARY RULE - Implicit Narrative Columns:
+   If NO explicit description column exists:
+   - Identify a column containing free-text narrative sentences per claim row
+   - This column may be unlabeled or generically labeled (e.g., "Details", "Narrative", blank header)
+   - The text typically consists of one or more sentences describing the loss event
+   - Extract this narrative text verbatim as the description
+
+3. STRICT EXCLUSIONS - Never extract description from columns labeled:
+   - "Cause"
+   - "Type"  
+   - "Coverage"
+   - "Class"
+   - "Nature"
+   - "Status"
+   - Do NOT combine text from multiple columns
+   - Do NOT summarize, rephrase, or normalize narrative text
+
+4. AMBIGUITY HANDLING:
+   - If multiple columns could plausibly be narrative text: return null for description
+   - If narrative text appears to span multiple columns: return null for description
+
+5. NUMERIC ADJACENCY RULE:
+   - Do NOT treat numeric columns or totals as narrative
+   - Numeric-only fields are never descriptions
+
+6. OUTPUT REQUIREMENTS:
+   - Extract description text verbatim, exactly as written
+   - Preserve punctuation and sentence structure
+   - If no valid narrative text exists per claim row, return null
 
 This is for internal brokerage operations. All outputs require review by licensed insurance professionals before use.`;
 
