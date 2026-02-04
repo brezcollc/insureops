@@ -233,58 +233,67 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
             <Separator />
 
             {/* Review & Approval Section */}
-            <div className={`p-4 rounded-lg border-2 ${isReviewed ? 'border-green-500/30 bg-green-50/50 dark:bg-green-950/20' : 'border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20'}`}>
-              <h4 className="font-medium mb-3 flex items-center gap-2">
+            <div className={`p-5 rounded-xl border-2 transition-all duration-300 ${
+              isReviewed 
+                ? 'border-green-500/50 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/40 dark:to-green-900/20 shadow-sm shadow-green-500/10' 
+                : 'border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20'
+            }`}>
+              <h4 className="font-semibold mb-4 flex items-center gap-2">
                 <ShieldCheck className={`w-5 h-5 ${isReviewed ? 'text-green-600' : 'text-amber-600'}`} />
                 Review & Approval
               </h4>
               
               {isReviewed ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span className="font-medium">This request has been reviewed</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Reviewed At</p>
-                      <p className="font-medium">
-                        {new Date(request.reviewed_at!).toLocaleString()}
-                      </p>
+                <div className="space-y-4">
+                  {/* Success State Button - Disabled */}
+                  <div className="flex flex-col items-center gap-3 py-3">
+                    <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
+                      <CheckCircle2 className="w-7 h-7 text-white" />
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Reviewed By</p>
-                      <p className="font-medium">{request.reviewed_by || "Unknown"}</p>
-                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 cursor-default pointer-events-none font-medium"
+                      disabled
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Reviewed ✓
+                    </Button>
+                    <p className="text-sm text-green-700 dark:text-green-400 text-center">
+                      Reviewed on {new Date(request.reviewed_at!).toLocaleDateString()} by {request.reviewed_by || "Unknown"}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                  
+                  <Separator className="bg-green-200 dark:bg-green-800" />
+                  
+                  <div className="flex items-center gap-2 text-sm text-green-700/80 dark:text-green-400/80 justify-center">
                     <Lock className="w-4 h-4" />
-                    <span>Further agent actions and status changes are locked.</span>
+                    <span>This request is locked from further automated processing.</span>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/20 p-3 rounded-lg">
                     <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
                     <div className="text-sm">
                       <p className="font-medium">Pending Review</p>
-                      <p className="text-muted-foreground mt-1">
+                      <p className="text-amber-600 dark:text-amber-500 mt-1">
                         Review this loss run data before marking as complete. This action will lock the request from further automated processing.
                       </p>
                     </div>
                   </div>
                   <Button 
                     variant="default" 
-                    className="w-full bg-green-600 hover:bg-green-700"
+                    size="lg"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
                     onClick={() => setShowReviewConfirm(true)}
                     disabled={markAsReviewed.isPending}
                   >
                     {markAsReviewed.isPending ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      <ShieldCheck className="w-4 h-4 mr-2" />
                     )}
-                    I have reviewed this loss run data
+                    Mark as Reviewed
                   </Button>
                   <p className="text-xs text-muted-foreground text-center">
                     ⚠️ All outputs require review by a licensed insurance professional before use.
