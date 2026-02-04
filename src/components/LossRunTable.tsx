@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
-import { MoreHorizontal, Eye, RefreshCw, Plus, Loader2 } from "lucide-react";
+import { MoreHorizontal, Eye, RefreshCw, Plus, Loader2, Lock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -192,7 +193,15 @@ export function LossRunTable({ searchQuery = "" }: LossRunTableProps) {
                   <td>{coverageTypeLabels[request.coverage_type] || request.coverage_type}</td>
                   <td>{new Date(request.request_date).toLocaleDateString()}</td>
                   <td>
-                    <StatusBadge status={request.status} />
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={request.status} />
+                      {request.reviewed_at && (
+                        <Badge variant="secondary" className="gap-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          <Lock className="w-3 h-3" />
+                          Reviewed
+                        </Badge>
+                      )}
+                    </div>
                   </td>
                   <td className="text-right" onClick={(e) => e.stopPropagation()}>
                     <Button 

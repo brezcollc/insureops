@@ -146,6 +146,8 @@ export type Database = {
           policy_expiration_date: string | null
           policy_number: string
           request_date: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["loss_run_status"]
           updated_at: string
         }
@@ -161,6 +163,8 @@ export type Database = {
           policy_expiration_date?: string | null
           policy_number: string
           request_date?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["loss_run_status"]
           updated_at?: string
         }
@@ -176,6 +180,8 @@ export type Database = {
           policy_expiration_date?: string | null
           policy_number?: string
           request_date?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["loss_run_status"]
           updated_at?: string
         }
