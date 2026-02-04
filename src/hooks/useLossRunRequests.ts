@@ -43,6 +43,8 @@ export interface LossRunRequest {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
   clients?: Client;
   carriers?: Carrier;
 }
@@ -292,6 +294,37 @@ export function useResendEmail() {
       toast({
         title: "Email Sent",
         description: "Loss run request email has been sent successfully.",
+      });
+    },
+  });
+}
+
+export function useMarkAsReviewed() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { data, error } = await supabase
+        .from("loss_run_requests")
+        .update({
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: "Manual Review", // Placeholder until auth is implemented
+        })
+        .eq("id", requestId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loss_run_requests"] });
+      queryClient.invalidateQueries({ queryKey: ["loss_run_request"] });
+      queryClient.invalidateQueries({ queryKey: ["loss_run_requests_by_client"] });
+      toast({
+        title: "Request Reviewed",
+        description: "This loss run request has been marked as reviewed and locked.",
       });
     },
   });

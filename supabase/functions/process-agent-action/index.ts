@@ -116,6 +116,25 @@ Deno.serve(async (req) => {
       );
     }
 
+    // CRITICAL: Check if request has been reviewed - if so, block all agent actions
+    if (request.reviewed_at) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          decision: {
+            action: "wait",
+            reason: "Request is reviewed and locked - no agent actions permitted",
+          },
+          result: {
+            executed: false,
+            details: "WAIT – Request is reviewed and locked. Human review has been completed and this request is now protected from automated changes.",
+          },
+          locked: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch email logs for context
     const { data: emailLogs } = await supabase
       .from("email_logs")
