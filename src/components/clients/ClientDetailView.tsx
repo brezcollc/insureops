@@ -10,7 +10,8 @@ import {
   Upload,
   CheckCircle,
   Loader2,
-  Edit
+  Edit,
+  Send
 } from "lucide-react";
 import { useClient } from "@/hooks/useClients";
 import { ClientOverviewTab } from "@/components/clients/tabs/ClientOverviewTab";
@@ -19,6 +20,7 @@ import { ClientLossRunsTab } from "@/components/clients/tabs/ClientLossRunsTab";
 import { ClientDocumentsTab } from "@/components/clients/tabs/ClientDocumentsTab";
 import { ClientReviewTab } from "@/components/clients/tabs/ClientReviewTab";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
+import { BatchLossRunDialog } from "@/components/clients/BatchLossRunDialog";
 
 interface ClientDetailViewProps {
   clientId: string;
@@ -29,6 +31,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const { data: client, isLoading } = useClient(clientId);
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isBatchLossRunOpen, setIsBatchLossRunOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -77,10 +80,16 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             </div>
           </div>
         </div>
-        <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-          <Edit className="w-4 h-4 mr-2" />
-          Edit Client
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setIsBatchLossRunOpen(true)}>
+            <Send className="w-4 h-4 mr-2" />
+            Request Loss Runs
+          </Button>
+          <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+            <Edit className="w-4 h-4 mr-2" />
+            Edit Client
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -134,6 +143,15 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         client={client}
+      />
+
+      {/* Batch Loss Run Dialog */}
+      <BatchLossRunDialog
+        open={isBatchLossRunOpen}
+        onOpenChange={setIsBatchLossRunOpen}
+        clientId={clientId}
+        clientName={client.name}
+        onSuccess={() => setActiveTab("loss-runs")}
       />
     </div>
   );

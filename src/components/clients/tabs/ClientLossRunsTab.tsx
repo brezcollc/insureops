@@ -9,11 +9,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ClipboardList, Loader2, Eye } from "lucide-react";
+import { Plus, ClipboardList, Loader2, Eye, Send } from "lucide-react";
 import { useLossRunsByClient } from "@/hooks/useClientLossRuns";
 import { StatusBadge } from "@/components/StatusBadge";
 import { NewRequestForm } from "@/components/NewRequestForm";
 import { RequestDetailView } from "@/components/RequestDetailView";
+import { BatchLossRunDialog } from "@/components/clients/BatchLossRunDialog";
 import type { LossRunRequest } from "@/hooks/useLossRunRequests";
 
 interface ClientLossRunsTabProps {
@@ -34,6 +35,7 @@ const coverageTypeLabels: Record<string, string> = {
 export function ClientLossRunsTab({ clientId, clientName }: ClientLossRunsTabProps) {
   const { data: requests, isLoading, refetch } = useLossRunsByClient(clientId);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<LossRunRequest | null>(null);
 
   if (isLoading) {
@@ -53,10 +55,16 @@ export function ClientLossRunsTab({ clientId, clientName }: ClientLossRunsTabPro
             Track loss run requests for {clientName}
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Request Loss Run
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsCreateOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Single Request
+          </Button>
+          <Button onClick={() => setIsBatchOpen(true)}>
+            <Send className="w-4 h-4 mr-2" />
+            Request All
+          </Button>
+        </div>
       </div>
 
       <div className="card-elevated overflow-hidden">
@@ -123,6 +131,14 @@ export function ClientLossRunsTab({ clientId, clientName }: ClientLossRunsTabPro
         onOpenChange={setIsCreateOpen}
         onSuccess={() => refetch()}
         preselectedClientId={clientId}
+      />
+
+      <BatchLossRunDialog
+        open={isBatchOpen}
+        onOpenChange={setIsBatchOpen}
+        clientId={clientId}
+        clientName={clientName}
+        onSuccess={() => refetch()}
       />
 
       <RequestDetailView
