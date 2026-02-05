@@ -15,6 +15,65 @@ interface AgentAction {
   summary?: string;
 }
 
+type TriggerType = "manual" | "document_upload" | "follow_up" | "batch";
+
+// Check for duplicate actions within a time window (in hours)
+async function checkDuplicateAction(
+  supabase: any,
+  requestId: string,
+  actionType: string,
+  hoursWindow: number = 24
+): Promise<boolean> {
+  const windowStart = new Date();
+  windowStart.setHours(windowStart.getHours() - hoursWindow);
+
+  try {
+    const { data, error } = await supabase
+      .from("agent_action_logs")
+      .select("id")
+      .eq("request_id", requestId)
+      .eq("action_taken", actionType)
+      .gte("created_at", windowStart.toISOString())
+      .limit(1);
+
+    if (error) {
+      console.error("Error checking duplicate action:", error);
+      return false;
+    }
+
+    return (data?.length || 0) > 0;
+  } catch (e) {
+    console.error("Exception checking duplicate action:", e);
+    return false;
+  }
+}
+
+// Log agent action for auditability
+async function logAgentAction(
+  supabase: any,
+  requestId: string,
+  triggerType: TriggerType,
+  actionTaken: string,
+  actionResult: string
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from("agent_action_logs")
+      .insert([{
+        request_id: requestId,
+        trigger_type: triggerType,
+        action_taken: actionTaken,
+        action_result: actionResult,
+      }]);
+
+    if (error) {
+      console.error("Error logging agent action:", error);
+    }
+  } catch (e) {
+    console.error("Exception logging agent action:", e);
+  }
+}
+
 const AGENT_TOOLS = [
   {
     type: "function",
@@ -85,7 +144,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { requestId } = await req.json();
+    const { requestId, triggerType = "manual" } = await req.json();
+    const trigger = (triggerType as TriggerType) || "manual";
 
     if (!requestId) {
       return new Response(
@@ -118,6 +178,9 @@ Deno.serve(async (req) => {
 
     // CRITICAL: Check if request has been reviewed - if so, block all agent actions
     if (request.reviewed_at) {
+      // Log the blocked attempt
+      await logAgentAction(supabase, requestId, trigger, "blocked", "Request is reviewed and locked");
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -130,6 +193,7 @@ Deno.serve(async (req) => {
             details: "WAIT – Request is reviewed and locked. Human review has been completed and this request is now protected from automated changes.",
           },
           locked: true,
+          triggerType: trigger,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -232,6 +296,16 @@ What is the next best action for this request?`;
     // Execute the decided action
     switch (decision.action) {
       case "send_follow_up": {
+        // Check for duplicate follow-up within 7 days (168 hours)
+        const isDuplicate = await checkDuplicateAction(supabase, requestId, "send_follow_up", 168);
+        if (isDuplicate) {
+          actionResult = { 
+            executed: false, 
+            details: "Follow-up already sent within the last 7 days - skipping to prevent duplicate" 
+          };
+          break;
+        }
+
         // Call the send-loss-run-email function
         const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-loss-run-email`, {
           method: "POST",
@@ -285,6 +359,16 @@ What is the next best action for this request?`;
       }
 
       case "parse_document": {
+        // Check for duplicate parse within 1 hour
+        const isDuplicateParse = await checkDuplicateAction(supabase, requestId, "parse_document", 1);
+        if (isDuplicateParse) {
+          actionResult = { 
+            executed: false, 
+            details: "Document parsing already triggered recently - skipping to prevent duplicate" 
+          };
+          break;
+        }
+
         // Add note indicating document parsing was triggered
         const existingNotes = request.notes || "";
         const timestamp = new Date().toISOString().split("T")[0];
@@ -340,6 +424,9 @@ What is the next best action for this request?`;
         break;
     }
 
+    // Log the action taken
+    await logAgentAction(supabase, requestId, trigger, decision.action, actionResult.details);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -348,6 +435,7 @@ What is the next best action for this request?`;
           reason: decision.reason,
         },
         result: actionResult,
+        triggerType: trigger,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

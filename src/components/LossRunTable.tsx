@@ -2,17 +2,57 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
-import { MoreHorizontal, Eye, RefreshCw, Plus, Loader2, Lock } from "lucide-react";
+import { MoreHorizontal, Eye, RefreshCw, Plus, Loader2, Lock, Bot, Zap } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useLossRunRequests, LossRunRequest, useUpdateLossRunStatus, useResendEmail } from "@/hooks/useLossRunRequests";
 import { NewRequestForm } from "@/components/NewRequestForm";
 import { RequestDetailView } from "@/components/RequestDetailView";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+
+// Fetch latest agent action for each request
+function useLatestAgentActions(requestIds: string[]) {
+  return useQuery({
+    queryKey: ["agent_action_logs", "latest", requestIds],
+    queryFn: async () => {
+      if (requestIds.length === 0) return {};
+      
+      const { data, error } = await supabase
+        .from("agent_action_logs")
+        .select("*")
+        .in("request_id", requestIds)
+        .in("trigger_type", ["document_upload", "follow_up"])
+        .neq("action_taken", "blocked")
+        .neq("action_taken", "skipped")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      
+      // Group by request_id, keeping only the latest
+      const latestByRequest: Record<string, { trigger_type: string; action_taken: string; created_at: string }> = {};
+      for (const log of data || []) {
+        if (!latestByRequest[log.request_id]) {
+          latestByRequest[log.request_id] = log;
+        }
+      }
+      return latestByRequest;
+    },
+    enabled: requestIds.length > 0,
+    staleTime: 30000,
+  });
+}
 
 interface LossRunTableProps {
   searchQuery?: string;
@@ -34,6 +74,10 @@ export function LossRunTable({ searchQuery = "" }: LossRunTableProps) {
   const updateStatus = useUpdateLossRunStatus();
   const resendEmail = useResendEmail();
   
+  // Get request IDs for fetching agent actions
+  const requestIds = (requests || []).map(r => r.id);
+  const { data: latestActions } = useLatestAgentActions(requestIds);
+
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<LossRunRequest | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -142,6 +186,7 @@ export function LossRunTable({ searchQuery = "" }: LossRunTableProps) {
 
   return (
     <>
+      <TooltipProvider>
       <div className="card-elevated overflow-hidden animate-fade-in">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
@@ -200,6 +245,34 @@ export function LossRunTable({ searchQuery = "" }: LossRunTableProps) {
                           <Lock className="w-3 h-3" />
                           Reviewed
                         </Badge>
+                      )}
+                      {latestActions?.[request.id] && !request.reviewed_at && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge 
+                              variant="outline" 
+                              className="gap-1 text-xs border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400 cursor-help"
+                            >
+                              {latestActions[request.id].trigger_type === "document_upload" ? (
+                                <Zap className="w-3 h-3" />
+                              ) : (
+                                <Bot className="w-3 h-3" />
+                              )}
+                              Auto
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="text-xs">
+                              {latestActions[request.id].trigger_type === "document_upload" 
+                                ? "Auto-processed on document upload" 
+                                : "Follow-up sent automatically"}
+                              <br />
+                              <span className="text-muted-foreground">
+                                {new Date(latestActions[request.id].created_at).toLocaleString()}
+                              </span>
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   </td>
@@ -274,6 +347,7 @@ export function LossRunTable({ searchQuery = "" }: LossRunTableProps) {
           </div>
         </div>
       </div>
+      </TooltipProvider>
 
       {/* New Request Form */}
       <NewRequestForm 

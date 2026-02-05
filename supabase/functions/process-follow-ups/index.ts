@@ -13,8 +13,59 @@ interface RequestWithRelations {
   coverage_type: string;
   policy_effective_date: string | null;
   policy_expiration_date: string | null;
+  reviewed_at: string | null;
   clients: { id: string; name: string } | null;
   carriers: { id: string; name: string; loss_run_email: string } | null;
+}
+
+// Check if a follow-up was already sent within the time window
+async function hasRecentFollowUp(
+  supabase: any,
+  requestId: string,
+  daysWindow: number = 7
+): Promise<boolean> {
+  const windowStart = new Date();
+  windowStart.setDate(windowStart.getDate() - daysWindow);
+
+  const { data, error } = await supabase
+    .from("agent_action_logs")
+    .select("id")
+    .eq("request_id", requestId)
+    .eq("action_taken", "send_follow_up")
+    .gte("created_at", windowStart.toISOString())
+    .limit(1);
+
+  if (error) {
+    console.error("Error checking recent follow-up:", error);
+    return false;
+  }
+
+  return (data?.length || 0) > 0;
+}
+
+// Log agent action for auditability
+async function logAgentAction(
+  supabase: any,
+  requestId: string,
+  actionTaken: string,
+  actionResult: string
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from("agent_action_logs")
+      .insert([{
+        request_id: requestId,
+        trigger_type: "follow_up",
+        action_taken: actionTaken,
+        action_result: actionResult,
+      }]);
+
+    if (error) {
+      console.error("Error logging agent action:", error);
+    }
+  } catch (e) {
+    console.error("Exception logging agent action:", e);
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -32,7 +83,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Find requests that are 7+ days old and still in "requested" status
+    // Find requests that are 7+ days old, still in "requested" or "follow_up_sent" status,
+    // and NOT reviewed (reviewed_at IS NULL)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -44,10 +96,12 @@ const handler = async (req: Request): Promise<Response> => {
         coverage_type,
         policy_effective_date,
         policy_expiration_date,
+        reviewed_at,
         clients (id, name),
         carriers (id, name, loss_run_email)
       `)
-      .eq("status", "requested")
+      .in("status", ["requested", "follow_up_sent"])
+      .is("reviewed_at", null)
       .lte("request_date", sevenDaysAgo.toISOString());
 
     if (fetchError) {
@@ -62,6 +116,23 @@ const handler = async (req: Request): Promise<Response> => {
       const request = rawRequest as unknown as RequestWithRelations;
       
       try {
+        // CRITICAL: Double-check reviewed status (defense in depth)
+        if (request.reviewed_at) {
+          console.log(`Skipping reviewed request ${request.id}`);
+          await logAgentAction(supabase, request.id, "blocked", "Request is reviewed and locked");
+          results.push({ requestId: request.id, success: false, error: "Request is reviewed" });
+          continue;
+        }
+
+        // Check for duplicate follow-up within 7 days
+        const hasDuplicate = await hasRecentFollowUp(supabase, request.id, 7);
+        if (hasDuplicate) {
+          console.log(`Skipping request ${request.id} - follow-up already sent recently`);
+          await logAgentAction(supabase, request.id, "skipped", "Follow-up already sent within 7 days");
+          results.push({ requestId: request.id, success: false, error: "Recent follow-up exists" });
+          continue;
+        }
+
         // Call the send-loss-run-email function for each request
         const emailPayload = {
           requestId: request.id,
@@ -96,10 +167,19 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error(`Email send failed: ${errorText}`);
         }
 
+        // Log successful follow-up
+        await logAgentAction(supabase, request.id, "send_follow_up", "Auto follow-up email sent successfully");
+
         results.push({ requestId: request.id, success: true });
         console.log(`Follow-up sent for request ${request.id}`);
       } catch (error) {
         console.error(`Error processing request ${request.id}:`, error);
+        await logAgentAction(
+          supabase, 
+          request.id, 
+          "send_follow_up", 
+          `Failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
         results.push({
           requestId: request.id,
           success: false,

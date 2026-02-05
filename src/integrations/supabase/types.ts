@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_action_logs: {
+        Row: {
+          action_result: string | null
+          action_taken: string
+          created_at: string
+          id: string
+          request_id: string
+          trigger_type: string
+        }
+        Insert: {
+          action_result?: string | null
+          action_taken: string
+          created_at?: string
+          id?: string
+          request_id: string
+          trigger_type: string
+        }
+        Update: {
+          action_result?: string | null
+          action_taken?: string
+          created_at?: string
+          id?: string
+          request_id?: string
+          trigger_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_action_logs_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "loss_run_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       carriers: {
         Row: {
           created_at: string
