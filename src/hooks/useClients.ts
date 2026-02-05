@@ -19,6 +19,8 @@ export interface Client {
 export interface ClientWithStats extends Client {
   policy_count: number;
   open_request_count: number;
+  reviewed_request_count: number;
+  total_request_count: number;
 }
 
 export interface CreateClientInput {
@@ -84,8 +86,7 @@ export function useClientsWithStats(includeArchived = false) {
       // Fetch open loss run request counts
       const { data: requests, error: requestsError } = await supabase
         .from("loss_run_requests")
-        .select("client_id, status")
-        .in("status", ["requested", "follow_up_sent"]);
+        .select("client_id, status, reviewed_at");
       
       if (requestsError) throw requestsError;
 
@@ -96,17 +97,32 @@ export function useClientsWithStats(includeArchived = false) {
         policyCountMap.set(p.client_id, count + 1);
       });
 
-      const requestCountMap = new Map<string, number>();
+      const openRequestCountMap = new Map<string, number>();
+      const reviewedRequestCountMap = new Map<string, number>();
+      const totalRequestCountMap = new Map<string, number>();
+      
       requests?.forEach((r) => {
-        const count = requestCountMap.get(r.client_id) || 0;
-        requestCountMap.set(r.client_id, count + 1);
+        // Total count
+        const total = totalRequestCountMap.get(r.client_id) || 0;
+        totalRequestCountMap.set(r.client_id, total + 1);
+        
+        // Reviewed vs Open count
+        if (r.reviewed_at) {
+          const reviewed = reviewedRequestCountMap.get(r.client_id) || 0;
+          reviewedRequestCountMap.set(r.client_id, reviewed + 1);
+        } else {
+          const open = openRequestCountMap.get(r.client_id) || 0;
+          openRequestCountMap.set(r.client_id, open + 1);
+        }
       });
 
       const clientsWithStats: ClientWithStats[] = (clients || []).map((client) => ({
         ...client,
         status: client.status || "active",
         policy_count: policyCountMap.get(client.id) || 0,
-        open_request_count: requestCountMap.get(client.id) || 0,
+        open_request_count: openRequestCountMap.get(client.id) || 0,
+        reviewed_request_count: reviewedRequestCountMap.get(client.id) || 0,
+        total_request_count: totalRequestCountMap.get(client.id) || 0,
       }));
 
       return clientsWithStats;

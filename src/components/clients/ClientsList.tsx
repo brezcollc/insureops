@@ -26,11 +26,45 @@ import {
   Archive, 
   RotateCcw,
   FileText,
-  Loader2 
+  Loader2,
+  CheckCircle2
 } from "lucide-react";
 import { useClientsWithStats, useArchiveClient, useRestoreClient } from "@/hooks/useClients";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import type { ClientWithStats } from "@/hooks/useClients";
+
+// Progress indicator component
+function ProgressIndicator({ reviewed, total }: { reviewed: number; total: number }) {
+  if (total === 0) {
+    return <span className="text-muted-foreground text-sm">—</span>;
+  }
+  
+  const isComplete = reviewed === total;
+  const progressPercent = Math.round((reviewed / total) * 100);
+  
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
+        {isComplete && <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />}
+        <span className={`text-sm font-medium ${isComplete ? 'text-green-600' : 'text-foreground'}`}>
+          {reviewed} / {total}
+        </span>
+      </div>
+      <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div 
+          className={`h-full rounded-full transition-all duration-300 ${
+            isComplete 
+              ? 'bg-green-500' 
+              : progressPercent > 0 
+                ? 'bg-primary' 
+                : 'bg-muted'
+          }`}
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 interface ClientsListProps {
   onClientSelect: (clientId: string) => void;
@@ -113,7 +147,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
               <TableHead>Client Name</TableHead>
               <TableHead>Industry</TableHead>
               <TableHead className="text-center">Policies</TableHead>
-              <TableHead className="text-center">Open Requests</TableHead>
+              <TableHead>Loss Run Progress</TableHead>
               <TableHead>Renewal Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -145,12 +179,11 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
                 <TableCell className="text-center">
                   <Badge variant="secondary">{client.policy_count}</Badge>
                 </TableCell>
-                <TableCell className="text-center">
-                  {client.open_request_count > 0 ? (
-                    <Badge variant="default">{client.open_request_count}</Badge>
-                  ) : (
-                    <span className="text-muted-foreground">0</span>
-                  )}
+                <TableCell>
+                  <ProgressIndicator 
+                    reviewed={client.reviewed_request_count} 
+                    total={client.total_request_count} 
+                  />
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {client.renewal_date
