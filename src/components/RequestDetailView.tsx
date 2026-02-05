@@ -38,6 +38,7 @@ import {
 } from "@/hooks/useLossRunRequests";
 import { useAgentAction } from "@/hooks/useAgentAction";
 import { useToast } from "@/hooks/use-toast";
+import { DocumentUploadSection } from "@/components/DocumentUploadSection";
 
 interface RequestDetailViewProps {
   request: LossRunRequest | null;
@@ -229,6 +230,11 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
                 <p className="text-sm bg-muted p-3 rounded-lg whitespace-pre-wrap">{request.notes}</p>
               </div>
             )}
+
+            <Separator />
+
+            {/* Documents Section */}
+            <DocumentUploadSection requestId={request.id} isReviewed={isReviewed} />
 
             <Separator />
 
