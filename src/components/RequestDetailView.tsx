@@ -233,41 +233,47 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
             <Separator />
 
             {/* Review & Approval Section */}
-            <div className={`p-5 rounded-xl border-2 transition-all duration-300 ${
+            <div className={`p-6 rounded-xl border-2 transition-all duration-500 ${
               isReviewed 
-                ? 'border-green-500/50 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/40 dark:to-green-900/20 shadow-sm shadow-green-500/10' 
-                : 'border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20'
+                ? 'border-green-500 bg-gradient-to-br from-green-50 via-green-100/80 to-emerald-50 dark:from-green-950/60 dark:via-green-900/40 dark:to-emerald-950/30 shadow-lg shadow-green-500/20 ring-2 ring-green-400/30' 
+                : 'border-amber-400/50 bg-gradient-to-br from-amber-50/80 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20'
             }`}>
-              <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <ShieldCheck className={`w-5 h-5 ${isReviewed ? 'text-green-600' : 'text-amber-600'}`} />
-                Review & Approval
-              </h4>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <ShieldCheck className={`w-5 h-5 ${isReviewed ? 'text-green-600' : 'text-amber-600'}`} />
+                  Review & Approval
+                </h4>
+                {isReviewed && (
+                  <Badge className="bg-green-600 hover:bg-green-600 text-white gap-1 px-3 py-1 text-sm font-semibold animate-in fade-in duration-300">
+                    <CheckCircle2 className="w-4 h-4" />
+                    COMPLETE
+                  </Badge>
+                )}
+              </div>
               
               {isReviewed ? (
                 <div className="space-y-4">
                   {/* Success State Button - Disabled */}
-                  <div className="flex flex-col items-center gap-3 py-3">
-                    <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30">
-                      <CheckCircle2 className="w-7 h-7 text-white" />
+                  <div className="flex flex-col items-center gap-4 py-6 bg-white/60 dark:bg-green-950/40 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-xl shadow-green-500/40 ring-4 ring-green-200 dark:ring-green-800">
+                      <CheckCircle2 className="w-9 h-9 text-white" />
                     </div>
-                    <Button 
-                      variant="outline" 
-                      className="w-full bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 cursor-default pointer-events-none font-medium"
-                      disabled
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Reviewed ✓
-                    </Button>
-                    <p className="text-sm text-green-700 dark:text-green-400 text-center">
-                      Reviewed on {new Date(request.reviewed_at!).toLocaleDateString()} by {request.reviewed_by || "Unknown"}
-                    </p>
+                    <div className="text-center space-y-2">
+                      <h3 className="text-xl font-bold text-green-700 dark:text-green-300">
+                        Review Complete
+                      </h3>
+                      <p className="text-sm text-green-600 dark:text-green-400">
+                        Reviewed on <span className="font-semibold">{new Date(request.reviewed_at!).toLocaleDateString()}</span>
+                      </p>
+                      <p className="text-sm text-green-600/80 dark:text-green-400/80">
+                        by {request.reviewed_by || "Unknown"}
+                      </p>
+                    </div>
                   </div>
                   
-                  <Separator className="bg-green-200 dark:bg-green-800" />
-                  
-                  <div className="flex items-center gap-2 text-sm text-green-700/80 dark:text-green-400/80 justify-center">
+                  <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 justify-center bg-green-100/50 dark:bg-green-900/30 py-2 px-4 rounded-lg">
                     <Lock className="w-4 h-4" />
-                    <span>This request is locked from further automated processing.</span>
+                    <span className="font-medium">Request locked from automated processing</span>
                   </div>
                 </div>
               ) : (
