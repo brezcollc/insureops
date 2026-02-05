@@ -100,10 +100,10 @@ export function ClientLossRunsTab({ clientId, clientName }: ClientLossRunsTabPro
           <h3 className="text-lg font-semibold">Loss Run Requests</h3>
           <p className="text-sm text-muted-foreground">
             {totalRequests > 0 ? (
-              <span className="flex items-center gap-2">
-                <span>{reviewedCount} / {totalRequests} reviewed</span>
+              <span className="flex items-center gap-2 text-xs">
+                <span className="tabular-nums">{reviewedCount}/{totalRequests} reviewed</span>
                 {reviewedCount === totalRequests && totalRequests > 0 && (
-                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
                 )}
               </span>
             ) : (

@@ -36,31 +36,31 @@ import type { ClientWithStats } from "@/hooks/useClients";
 // Progress indicator component
 function ProgressIndicator({ reviewed, total }: { reviewed: number; total: number }) {
   if (total === 0) {
-    return <span className="text-muted-foreground text-sm">—</span>;
+    return <span className="text-muted-foreground text-xs">No requests</span>;
   }
   
   const isComplete = reviewed === total;
   const progressPercent = Math.round((reviewed / total) * 100);
   
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1.5">
-        {isComplete && <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />}
-        <span className={`text-sm font-medium ${isComplete ? 'text-green-600' : 'text-foreground'}`}>
-          {reviewed} / {total}
-        </span>
-      </div>
-      <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+    <div className="flex items-center gap-3">
+      <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
         <div 
           className={`h-full rounded-full transition-all duration-300 ${
             isComplete 
               ? 'bg-green-500' 
               : progressPercent > 0 
-                ? 'bg-primary' 
+                ? 'bg-primary/70' 
                 : 'bg-muted'
           }`}
           style={{ width: `${progressPercent}%` }}
         />
+      </div>
+      <div className="flex items-center gap-1.5 min-w-[4rem]">
+        {isComplete && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+        <span className={`text-xs tabular-nums ${isComplete ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
+          {reviewed}/{total}
+        </span>
       </div>
     </div>
   );
