@@ -3,6 +3,8 @@ import { LossRunTable } from "@/components/LossRunTable";
 import { FileText, CheckCircle, Clock, Building2 } from "lucide-react";
 import { useClientsWithStats } from "@/hooks/useClients";
 import { useLossRunRequests } from "@/hooks/useLossRunRequests";
+import { SettingsView } from "@/components/SettingsView";
+import { HelpSupportView } from "@/components/HelpSupportView";
 
 interface DashboardViewProps {
   activeTab: string;
@@ -25,43 +27,11 @@ export function DashboardView({ activeTab, searchQuery = "" }: DashboardViewProp
   }).length || 0;
 
   if (activeTab === "settings") {
-    return (
-      <div className="p-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-foreground">Settings</h2>
-          <p className="text-muted-foreground">Configure your InsureOps workspace</p>
-        </div>
-        <div className="card-elevated p-12 text-center">
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted mx-auto mb-4">
-            <FileText className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">Settings Coming Soon</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Workspace settings and configuration options will be available in a future update.
-          </p>
-        </div>
-      </div>
-    );
+    return <SettingsView />;
   }
 
   if (activeTab === "help") {
-    return (
-      <div className="p-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-foreground">Help & Support</h2>
-          <p className="text-muted-foreground">Get help with InsureOps</p>
-        </div>
-        <div className="card-elevated p-12 text-center">
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted mx-auto mb-4">
-            <FileText className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">Help Center Coming Soon</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Documentation and support resources will be available in a future update.
-          </p>
-        </div>
-      </div>
-    );
+    return <HelpSupportView />;
   }
 
   // Default: Dashboard view
