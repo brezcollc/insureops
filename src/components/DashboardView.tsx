@@ -1,10 +1,11 @@
 import { StatCard } from "@/components/StatCard";
 import { LossRunTable } from "@/components/LossRunTable";
 import { FileText, CheckCircle, Clock, Building2 } from "lucide-react";
-import { useClientsWithStats } from "@/hooks/useClients";
 import { useLossRunRequests } from "@/hooks/useLossRunRequests";
 import { SettingsView } from "@/components/SettingsView";
 import { HelpSupportView } from "@/components/HelpSupportView";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardViewProps {
   activeTab: string;
@@ -12,11 +13,22 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ activeTab, searchQuery = "" }: DashboardViewProps) {
-  const { data: clients } = useClientsWithStats();
   const { data: requests } = useLossRunRequests();
+  
+  // Simple count query for dashboard stats
+  const { data: clientCount } = useQuery({
+    queryKey: ["clients_count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .or("status.eq.active,status.is.null");
+      if (error) throw error;
+      return count || 0;
+    },
+  });
 
-  // Calculate stats
-  const activeClients = clients?.filter(c => c.status !== "archived").length || 0;
+  const activeClients = clientCount || 0;
   const pendingRequests = requests?.filter(r => r.status === "requested" || r.status === "follow_up_sent").length || 0;
   const completedThisMonth = requests?.filter(r => {
     const date = new Date(r.created_at);
