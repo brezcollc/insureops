@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import {
   Loader2,
   CheckCircle2,
   ChevronRight,
+  ChevronLeft,
   Clock,
   AlertCircle
 } from "lucide-react";
@@ -36,6 +37,8 @@ import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import type { ClientWithStats } from "@/hooks/useClients";
 
 type SortOption = "recent" | "alphabetical" | "pending" | "client_code";
+
+const PAGE_SIZE = 15;
 
 // Compact progress indicator
 function ProgressIndicator({ reviewed, total }: { reviewed: number; total: number }) {
@@ -54,12 +57,12 @@ function ProgressIndicator({ reviewed, total }: { reviewed: number; total: numbe
   return (
     <div className="flex items-center gap-2">
       {isComplete ? (
-        <div className="flex items-center gap-1.5 text-green-600">
+        <div className="flex items-center gap-1.5 text-primary">
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span className="text-xs font-medium">Complete</span>
         </div>
       ) : (
-        <div className="flex items-center gap-1.5 text-amber-600">
+        <div className="flex items-center gap-1.5 text-destructive">
           <AlertCircle className="w-3.5 h-3.5" />
           <span className="text-xs font-medium">{pending} pending</span>
         </div>
@@ -93,60 +96,53 @@ interface ClientsListProps {
 
 export function ClientsList({ onClientSelect }: ClientsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("recent");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientWithStats | null>(null);
 
-  const { data: clients, isLoading } = useClientsWithStats(showArchived);
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1); // Reset to page 1 on search
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset to page 1 when sort or archived filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy, showArchived]);
+
+  const { data, isLoading, isFetching } = useClientsWithStats({
+    includeArchived: showArchived,
+    page: currentPage,
+    pageSize: PAGE_SIZE,
+    searchQuery: debouncedSearch,
+    sortBy,
+  });
+  
   const archiveClient = useArchiveClient();
   const restoreClient = useRestoreClient();
 
-  // Filter and sort clients
-  const filteredAndSortedClients = useMemo(() => {
-    let result = (clients || []).filter((client) => {
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        client.name.toLowerCase().includes(query) ||
-        client.client_code?.toLowerCase().includes(query) ||
-        client.industry?.toLowerCase().includes(query) ||
-        client.contact_email?.toLowerCase().includes(query)
-      );
-    });
+  const clients = data?.clients || [];
+  const totalCount = data?.totalCount || 0;
+  const totalPages = data?.totalPages || 1;
 
-    // Sort based on selected option
-    switch (sortBy) {
-      case "recent":
-        result.sort((a, b) => {
-          const aDate = a.last_activity || a.updated_at || a.created_at;
-          const bDate = b.last_activity || b.updated_at || b.created_at;
-          return new Date(bDate).getTime() - new Date(aDate).getTime();
-        });
-        break;
-      case "alphabetical":
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "pending":
-        result.sort((a, b) => b.open_request_count - a.open_request_count);
-        break;
-      case "client_code":
-        result.sort((a, b) => {
-          const aCode = a.client_code || "";
-          const bCode = b.client_code || "";
-          if (!aCode && !bCode) return a.name.localeCompare(b.name);
-          if (!aCode) return 1;
-          if (!bCode) return -1;
-          return aCode.localeCompare(bCode);
-        });
-        break;
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
     }
+  };
 
-    return result;
-  }, [clients, searchQuery, sortBy]);
-
-  const totalClients = clients?.length || 0;
-  const activeClients = clients?.filter(c => c.status !== "archived").length || 0;
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -163,10 +159,8 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
         <div>
           <h2 className="text-2xl font-semibold text-foreground">Clients</h2>
           <p className="text-sm text-muted-foreground">
-            {activeClients} active client{activeClients !== 1 ? "s" : ""}
-            {showArchived && totalClients > activeClients && (
-              <span className="ml-1">• {totalClients - activeClients} archived</span>
-            )}
+            {totalCount} client{totalCount !== 1 ? "s" : ""}
+            {isFetching && <Loader2 className="inline w-3 h-3 ml-2 animate-spin" />}
           </p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
@@ -214,7 +208,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
 
       {/* Client List - Dense Card Layout */}
       <div className="space-y-1">
-        {filteredAndSortedClients.map((client) => (
+        {clients.map((client) => (
           <div
             key={client.id}
             className={`group flex items-center gap-4 px-4 py-3 rounded-lg border border-transparent hover:border-border hover:bg-muted/40 cursor-pointer transition-all ${
@@ -318,18 +312,18 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
         ))}
 
         {/* Empty State */}
-        {filteredAndSortedClients.length === 0 && (
+        {clients.length === 0 && !isFetching && (
           <div className="text-center py-16 border border-dashed rounded-lg bg-muted/20">
             <Building2 className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
             <p className="font-medium text-foreground mb-1">
-              {searchQuery ? "No clients found" : "No clients yet"}
+              {debouncedSearch ? "No clients found" : "No clients yet"}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              {searchQuery
+              {debouncedSearch
                 ? "Try adjusting your search terms"
                 : "Add your first client to get started"}
             </p>
-            {!searchQuery && (
+            {!debouncedSearch && (
               <Button size="sm" onClick={() => setIsCreateOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Client
@@ -338,6 +332,38 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4 border-t">
+          <p className="text-sm text-muted-foreground">
+            Showing {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)} of {totalCount}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePreviousPage}
+              disabled={currentPage <= 1 || isFetching}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground px-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextPage}
+              disabled={currentPage >= totalPages || isFetching}
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Dialogs */}
       <ClientFormDialog

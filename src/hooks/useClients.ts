@@ -62,34 +62,107 @@ export function useClients(includeArchived = false) {
   });
 }
 
-export function useClientsWithStats(includeArchived = false) {
+export interface PaginatedClientsResult {
+  clients: ClientWithStats[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+export interface ClientsQueryParams {
+  includeArchived?: boolean;
+  page?: number;
+  pageSize?: number;
+  searchQuery?: string;
+  sortBy?: "recent" | "alphabetical" | "pending" | "client_code";
+}
+
+export function useClientsWithStats(params: ClientsQueryParams = {}) {
+  const { 
+    includeArchived = false, 
+    page = 1, 
+    pageSize = 15, 
+    searchQuery = "",
+    sortBy = "recent"
+  } = params;
+
   return useQuery({
-    queryKey: ["clients_with_stats", { includeArchived }],
-    queryFn: async () => {
-      // Fetch clients
+    queryKey: ["clients_with_stats", { includeArchived, page, pageSize, searchQuery, sortBy }],
+    queryFn: async (): Promise<PaginatedClientsResult> => {
+      // First, get total count for pagination
+      let countQuery = supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true });
+      
+      if (!includeArchived) {
+        countQuery = countQuery.or("status.eq.active,status.is.null");
+      }
+      
+      if (searchQuery) {
+        const query = `%${searchQuery}%`;
+        countQuery = countQuery.or(`name.ilike.${query},client_code.ilike.${query},industry.ilike.${query},contact_email.ilike.${query}`);
+      }
+      
+      const { count, error: countError } = await countQuery;
+      if (countError) throw countError;
+      
+      const totalCount = count || 0;
+      const totalPages = Math.ceil(totalCount / pageSize);
+      
+      // Fetch paginated clients
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
       let clientsQuery = supabase
         .from("clients")
         .select("*")
-        .order("name");
+        .range(from, to);
       
       if (!includeArchived) {
         clientsQuery = clientsQuery.or("status.eq.active,status.is.null");
       }
       
+      if (searchQuery) {
+        const query = `%${searchQuery}%`;
+        clientsQuery = clientsQuery.or(`name.ilike.${query},client_code.ilike.${query},industry.ilike.${query},contact_email.ilike.${query}`);
+      }
+      
+      // Apply sorting at database level for alphabetical and client_code
+      if (sortBy === "alphabetical") {
+        clientsQuery = clientsQuery.order("name", { ascending: true });
+      } else if (sortBy === "client_code") {
+        clientsQuery = clientsQuery.order("client_code", { ascending: true, nullsFirst: false });
+      } else {
+        clientsQuery = clientsQuery.order("updated_at", { ascending: false });
+      }
+      
       const { data: clients, error: clientsError } = await clientsQuery;
       if (clientsError) throw clientsError;
 
-      // Fetch policy counts
+      const clientIds = (clients || []).map(c => c.id);
+      
+      if (clientIds.length === 0) {
+        return {
+          clients: [],
+          totalCount,
+          totalPages,
+          currentPage: page
+        };
+      }
+
+      // Fetch policy counts for these clients
       const { data: policies, error: policiesError } = await supabase
         .from("policies")
-        .select("client_id");
+        .select("client_id")
+        .in("client_id", clientIds);
       
       if (policiesError) throw policiesError;
 
-      // Fetch loss run requests with dates
+      // Fetch loss run requests for these clients
       const { data: requests, error: requestsError } = await supabase
         .from("loss_run_requests")
-        .select("client_id, status, reviewed_at, updated_at, request_date");
+        .select("client_id, status, reviewed_at, updated_at, request_date")
+        .in("client_id", clientIds);
       
       if (requestsError) throw requestsError;
 
@@ -106,11 +179,9 @@ export function useClientsWithStats(includeArchived = false) {
       const lastActivityMap = new Map<string, string>();
       
       requests?.forEach((r) => {
-        // Total count
         const total = totalRequestCountMap.get(r.client_id) || 0;
         totalRequestCountMap.set(r.client_id, total + 1);
         
-        // Reviewed vs Open count
         if (r.reviewed_at) {
           const reviewed = reviewedRequestCountMap.get(r.client_id) || 0;
           reviewedRequestCountMap.set(r.client_id, reviewed + 1);
@@ -119,7 +190,6 @@ export function useClientsWithStats(includeArchived = false) {
           openRequestCountMap.set(r.client_id, open + 1);
         }
 
-        // Track last activity (most recent updated_at or request_date)
         const activityDate = r.updated_at || r.request_date;
         const currentLast = lastActivityMap.get(r.client_id);
         if (!currentLast || activityDate > currentLast) {
@@ -127,7 +197,7 @@ export function useClientsWithStats(includeArchived = false) {
         }
       });
 
-      const clientsWithStats: ClientWithStats[] = (clients || []).map((client) => ({
+      let clientsWithStats: ClientWithStats[] = (clients || []).map((client) => ({
         ...client,
         status: client.status || "active",
         policy_count: policyCountMap.get(client.id) || 0,
@@ -137,7 +207,23 @@ export function useClientsWithStats(includeArchived = false) {
         last_activity: lastActivityMap.get(client.id) || client.updated_at || null,
       }));
 
-      return clientsWithStats;
+      // Client-side sort for "recent" and "pending" which need computed fields
+      if (sortBy === "recent") {
+        clientsWithStats.sort((a, b) => {
+          const aDate = a.last_activity || a.updated_at || a.created_at;
+          const bDate = b.last_activity || b.updated_at || b.created_at;
+          return new Date(bDate).getTime() - new Date(aDate).getTime();
+        });
+      } else if (sortBy === "pending") {
+        clientsWithStats.sort((a, b) => b.open_request_count - a.open_request_count);
+      }
+
+      return {
+        clients: clientsWithStats,
+        totalCount,
+        totalPages,
+        currentPage: page
+      };
     },
   });
 }
