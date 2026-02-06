@@ -13,13 +13,13 @@ const LOSS_RUN_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          claim_number: { type: ["string", "null"], description: "Claim number exactly as written in the document, or null if not found" },
-          date_of_loss: { type: ["string", "null"], description: "Date of loss (YYYY-MM-DD format) exactly as shown, or null if not found" },
+          claim_number: { type: ["string", "null"], description: "Claim number exactly as written, or null if not found" },
+          date_of_loss: { type: ["string", "null"], description: "Date of loss in YYYY-MM-DD format, or null if not found" },
           description: { type: ["string", "null"], description: "Description verbatim from document, or null if not found" },
-          paid_amount: { type: ["number", "null"], description: "Paid amount as shown (0 if explicitly $0), or null if not shown" },
-          reserved_amount: { type: ["number", "null"], description: "Reserved amount as shown (0 if explicitly $0), or null if not shown" },
-          incurred_amount: { type: ["number", "null"], description: "Incurred amount as shown (0 if explicitly $0), or null if not shown" },
-          status: { type: ["string", "null"], enum: ["open", "closed", null], description: "Status exactly as indicated, or null if unclear" },
+          paid_amount: { type: ["number", "null"], description: "Paid amount as number, or null if not shown" },
+          reserved_amount: { type: ["number", "null"], description: "Reserved amount as number, or null if not shown" },
+          incurred_amount: { type: ["number", "null"], description: "Incurred amount as shown (never calculated), or null if not shown" },
+          status: { type: ["string", "null"], enum: ["open", "closed", null], description: "Status as indicated, or null if unclear" },
         },
         additionalProperties: false,
       },
@@ -27,27 +27,15 @@ const LOSS_RUN_SCHEMA = {
     _debug: {
       type: "object",
       properties: {
-        claims_table_detected: { type: "boolean", description: "Whether a claims table section was found in the document" },
-        claim_rows_detected: { type: "number", description: "Number of claim rows detected (excluding totals/summary)" },
-        evidence_map: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              claim_index: { type: "number" },
-              claim_number_evidence: { type: ["string", "null"], description: "Verbatim text from document for claim number" },
-              date_of_loss_evidence: { type: ["string", "null"], description: "Verbatim text from document for date" },
-              paid_amount_evidence: { type: ["string", "null"], description: "Verbatim text from document for paid amount" },
-              reserved_amount_evidence: { type: ["string", "null"], description: "Verbatim text from document for reserved" },
-              incurred_amount_evidence: { type: ["string", "null"], description: "Verbatim text from document for incurred" },
-              description_evidence: { type: ["string", "null"], description: "Verbatim text from document for description" },
-              status_evidence: { type: ["string", "null"], description: "Verbatim text from document for status" },
-            },
-            additionalProperties: false,
-          },
+        claim_rows_detected: { type: "number", description: "Number of valid claim rows found (excluding totals/headers)" },
+        row_anchors: { 
+          type: "array", 
+          items: { type: "string" },
+          description: "Verbatim text anchors proving each row exists (e.g., claim numbers or unique identifiers)"
         },
+        notes: { type: "string", description: "Brief explanation of parsing decisions" },
       },
-      required: ["claims_table_detected", "claim_rows_detected", "evidence_map"],
+      required: ["claim_rows_detected", "row_anchors", "notes"],
       additionalProperties: false,
     },
   },
@@ -79,55 +67,78 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an insurance loss run document parser with ZERO TOLERANCE for hallucination.
+    const systemPrompt = `You are a TRANSCRIPTION ENGINE for insurance loss run documents. You extract ONLY what exists. You NEVER invent data.
 
-CRITICAL RULE: EVIDENCE-BASED EXTRACTION ONLY
-You must NEVER invent, guess, assume, or fabricate any data. Every extracted value MUST have exact textual evidence from the document.
+=== ABSOLUTE RULES ===
+1. NEVER invent claim rows
+2. NEVER invent field values  
+3. claims: [] is valid and correct when no claims exist
+4. Under-extraction is acceptable. Fabrication is FORBIDDEN.
 
-HARD STOP RULES (NON-NEGOTIABLE):
+=== PARSING STAGES (FOLLOW IN ORDER) ===
 
-1. EVIDENCE REQUIREMENT:
-   - For EVERY field you extract, you MUST be able to point to exact text in the document
-   - If you cannot find verbatim evidence for a field, that field MUST be null
-   - If you cannot find a clear claim row with at least a claim number OR clear row boundary, do NOT create a claim
+STAGE 1 — CLAIM ROW DETECTION
+Scan the document for individual claim rows.
 
-2. NO-CLAIMS HANDLING:
-   - If the document states "no claims", "no losses", "loss-free", or similar, return: { "claims": [], "_debug": {...} }
-   - If the claims table is empty or contains only headers/totals, return empty claims array
-   - NEVER generate a placeholder claim. NEVER invent data.
+VALID claim rows:
+- Rows in a claims table with per-claim data
+- Clearly separated per-claim narrative entries
 
-3. ZERO-DOLLAR VALUES:
-   - If a value is explicitly shown as $0, 0, 0.00, or similar, extract as 0 (numeric zero)
-   - If a value is blank, missing, or not shown, extract as null (NOT zero)
-   - Zero and null are NOT the same. Zero means explicitly shown as zero. Null means not present.
+INVALID (do NOT extract):
+- Total/Summary rows
+- Header rows
+- "No losses" or "Loss-free" statements
+- Policy information sections
+- Blank rows
 
-4. TABLE-FIRST PARSING:
-   - ONLY extract claim data from the claims table section
-   - IGNORE policy info blocks, headers, narrative summaries, footer text
-   - IGNORE rows labeled "Total", "Totals", "Summary", "Grand Total"
-   - Each claim must come from a distinct row in the claims table
+IF zero valid claim rows exist → Return { "claims": [], "_debug": {...} } and STOP.
 
-5. DESCRIPTION EXTRACTION (if applicable):
-   - Primary: Extract from columns labeled "Description", "Loss Description", or "Claim Description"
-   - Secondary: If no explicit column, look for unlabeled narrative text column with sentences
-   - NEVER extract from columns labeled: "Cause", "Type", "Coverage", "Class", "Nature", "Status"
-   - If ambiguous, return null for description
+STAGE 2 — ROW ANCHORING
+For each potential claim row, identify a ROW ANCHOR that proves the row exists.
 
-6. FORMAT REQUIREMENTS:
-   - Dates: YYYY-MM-DD format (extract exactly as shown, convert format only)
-   - Currency: Numbers only, no symbols (e.g., 15000.50 not "$15,000.50")
-   - Status: "open" or "closed" only, or null if unclear
+Valid anchors:
+- Claim number text (e.g., "CLM-2024-001")
+- Unique per-row identifier
+- Distinct date + description combination
 
-7. DEBUG EVIDENCE:
-   - For each claim, provide the exact text evidence from the document in the _debug.evidence_map
-   - evidence_map entries must contain the verbatim text you found, or null if not found
+IF a row cannot be anchored → Do NOT create a claim for it.
+Record each anchor in _debug.row_anchors array.
 
-VALIDATION CHECK (before returning):
-- For each claim: Can I quote the exact text from the document for each non-null field?
-- If NO: Set that field to null
-- If I cannot justify ANY claim row from the document: Return empty claims array
+STAGE 3 — FIELD EXTRACTION (VERBATIM ONLY)
+For each anchored row, extract fields ONLY from that row's data.
 
-This is for internal brokerage operations. All outputs require review by licensed insurance professionals before use.`;
+Field rules:
+- claim_number: Exact text as shown, or null
+- date_of_loss: Convert to YYYY-MM-DD format, or null if not present
+- description: Verbatim text from Description column OR per-row narrative, or null
+- paid_amount: Number as shown (0 if explicitly $0), or null if not present
+- reserved_amount: Number as shown (0 if explicitly $0), or null if not present  
+- incurred_amount: Number as shown (NEVER calculate), or null if not present
+- status: "open" or "closed" as indicated, or null if unclear
+
+DESCRIPTION EXTRACTION:
+1. If explicit "Description" column exists → use it
+2. Else if per-row narrative clearly tied to that row → use it
+3. Else → return null (do NOT guess)
+
+=== NO-CLAIMS SCENARIOS ===
+Return claims: [] when:
+- Document states "no claims", "no losses", "loss-free"
+- Claims table is empty (headers only)
+- Only totals/summaries exist (no individual rows)
+
+=== DEBUG OUTPUT ===
+Always include _debug with:
+- claim_rows_detected: Count of valid anchored rows
+- row_anchors: Array of verbatim anchor text for each claim
+- notes: Brief explanation (e.g., "Found 3 rows in claims table" or "No claims table detected")
+
+=== PROHIBITIONS ===
+- Do NOT guess or infer any values
+- Do NOT create placeholder claims
+- Do NOT calculate incurred from paid + reserved
+- Do NOT satisfy schema by fabricating
+- Do NOT extract from headers, totals, or policy blocks`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -140,14 +151,18 @@ This is for internal brokerage operations. All outputs require review by license
         temperature: 0,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Parse this loss run document. Extract ONLY what is explicitly present. If no claims exist, return an empty claims array. NEVER fabricate data.\n\nDocument text:\n\n${documentText}` },
+          { role: "user", content: `Parse this loss run document using the 3-stage process. Extract ONLY what exists. If no claims exist, return claims: [].
+
+Document text:
+
+${documentText}` },
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "extract_loss_run_data",
-              description: "Extract structured claim data from a loss run document. Only extract data with explicit textual evidence. Return empty claims array if no claims exist.",
+              description: "Extract claim data from loss run document. Only include claims with valid row anchors. Return empty claims array if no valid claim rows exist.",
               parameters: LOSS_RUN_SCHEMA,
             },
           },
@@ -189,6 +204,19 @@ This is for internal brokerage operations. All outputs require review by license
     }
 
     const extractedData = JSON.parse(toolCall.function.arguments);
+    
+    // Validation: Ensure row_anchors count matches claims count
+    const claimsCount = extractedData.claims?.length || 0;
+    const anchorsCount = extractedData._debug?.row_anchors?.length || 0;
+    
+    if (claimsCount !== anchorsCount) {
+      console.warn(`Anchor mismatch: ${claimsCount} claims but ${anchorsCount} anchors`);
+      // Trim claims to match anchors if there are fewer anchors
+      if (anchorsCount < claimsCount) {
+        extractedData.claims = extractedData.claims.slice(0, anchorsCount);
+        extractedData._debug.notes += ` [Trimmed ${claimsCount - anchorsCount} unanchored claims]`;
+      }
+    }
 
     return new Response(
       JSON.stringify({ success: true, data: extractedData }),
