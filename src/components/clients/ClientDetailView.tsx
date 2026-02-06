@@ -90,20 +90,25 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <Building2 className="w-6 h-6 text-primary" />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-semibold text-foreground truncate">{client.name}</h2>
-              {client.status === "archived" ? (
-                <Badge variant="outline" className="text-muted-foreground">Archived</Badge>
-              ) : (
-                <Badge variant="secondary" className="bg-success/10 text-success border-0">Active</Badge>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-semibold text-foreground truncate">{client.name}</h2>
+                {client.client_code && (
+                  <span className="text-sm text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded">
+                    {client.client_code}
+                  </span>
+                )}
+                {client.status === "archived" ? (
+                  <Badge variant="outline" className="text-muted-foreground">Archived</Badge>
+                ) : (
+                  <Badge variant="secondary" className="bg-success/10 text-success border-0">Active</Badge>
+                )}
+              </div>
+              {client.industry && (
+                <p className="text-sm text-muted-foreground">{client.industry}</p>
               )}
             </div>
-            {client.industry && (
-              <p className="text-sm text-muted-foreground">{client.industry}</p>
-            )}
           </div>
-        </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 shrink-0">

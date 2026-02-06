@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface Client {
   id: string;
   name: string;
+  client_code: string | null;
   contact_email: string | null;
   contact_phone: string | null;
   address: string | null;
@@ -26,6 +27,7 @@ export interface ClientWithStats extends Client {
 
 export interface CreateClientInput {
   name: string;
+  client_code?: string;
   contact_email?: string;
   contact_phone?: string;
   address?: string;
@@ -169,6 +171,7 @@ export function useCreateClient() {
         .from("clients")
         .insert({
           name: input.name,
+          client_code: input.client_code || null,
           contact_email: input.contact_email || null,
           contact_phone: input.contact_phone || null,
           address: input.address || null,
