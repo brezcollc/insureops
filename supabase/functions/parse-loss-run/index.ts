@@ -98,10 +98,17 @@ A claim row MUST be created if ANY of these conditions are true:
    - Even if "Claim Number" is abbreviated or missing
 
 INVALID (do NOT extract as claim rows):
-- Total/Summary rows (e.g., "Total Incurred: $50,000")
+- Total/Summary rows (e.g., "Total Incurred: $50,000", "Subtotal", "Grand Total")
 - Header rows themselves
 - Policy information sections
 - Blank rows
+
+CRITICAL — SUBTOTAL/TOTAL EXCLUSION:
+Any row containing these terms must NEVER be treated as a claim row:
+- "Total", "Subtotal", "Grand Total", "Sum", "Policy Total"
+- "Total Incurred", "Total Paid", "Total Reserved"
+- Any row that aggregates values from other rows
+These rows must be completely excluded from claim extraction.
 
 CRITICAL CLARIFICATION — These do NOT indicate zero claims:
 - "No paid losses" → claims may still exist with $0 paid
@@ -135,13 +142,41 @@ Record each anchor in _debug.row_anchors array.
 STAGE 3 — FIELD EXTRACTION (VERBATIM ONLY)
 For each anchored row, extract fields ONLY from that row's data.
 
-Field rules:
+=== NUMERIC FIELD EXTRACTION RULES (NON-NEGOTIABLE) ===
+
+RULE 1: HEADER-ANCHORED EXTRACTION ONLY
+A numeric value may ONLY populate paid_amount, reserved_amount, or incurred_amount IF:
+- The column header EXPLICITLY references that concept
+- Valid headers for paid_amount: "Paid", "Loss Paid", "Paid Loss", "Amount Paid", "Paid Amount"
+- Valid headers for reserved_amount: "Reserve", "Reserved", "Outstanding", "Case Reserve", "Open Reserve"
+- Valid headers for incurred_amount: "Incurred", "Total Incurred", "Incurred Loss"
+
+If the header is:
+- Ambiguous (e.g., "Amount", "Value", "Loss")
+- Merged with other columns
+- Missing or unclear
+→ Set the field to NULL. Do NOT guess or shift values from nearby columns.
+
+RULE 2: SINGLE-COLUMN EXTRACTION ONLY
+- Do NOT sum multiple columns (e.g., do not add Claim + Medical + Expense)
+- Do NOT combine separate columns into one field
+- Extract ONLY the single column that explicitly matches the target field name
+- If multiple columns could match (e.g., two "Paid" columns), return NULL for that field
+
+RULE 3: SUBTOTAL/TOTAL EXCLUSION (ENFORCED)
+- Rows containing "Total", "Subtotal", "Grand Total", "Sum" must NEVER populate claim fields
+- If you detect a summary row, SKIP IT ENTIRELY — do not extract any values from it
+- Totals appearing at the bottom of tables are NOT claim rows
+
+RULE 4: ZERO VALUE HANDLING
+- $0.00, $0, or 0 is a VALID numeric value if it appears in a valid, header-matched column
+- Absence of a value (empty cell, dash, N/A) = NULL, not 0
+- "No payment" or similar text = NULL, not 0
+
+=== OTHER FIELD RULES ===
 - claim_number: Exact text as shown, or null if not present
 - date_of_loss: Convert to YYYY-MM-DD format, or null if not present
 - description: Verbatim text from Description column OR per-row narrative, or null
-- paid_amount: Number as shown (0 if explicitly $0), or null if column not present
-- reserved_amount: Number as shown (0 if explicitly $0), or null if column not present
-- incurred_amount: Number as shown (NEVER calculate), or null if column not present
 - status: "open" or "closed" as indicated, or null if unclear
 
 DESCRIPTION EXTRACTION:
@@ -160,7 +195,8 @@ Always include _debug with:
 - Do NOT create placeholder claims
 - Do NOT calculate incurred from paid + reserved
 - Do NOT satisfy schema by fabricating
-- Do NOT extract from headers, totals, or policy blocks`;
+- Do NOT extract from headers, totals, or policy blocks
+- Do NOT shift values between columns when headers don't match`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
