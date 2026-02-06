@@ -167,6 +167,12 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate email content
     const { subject, body, html } = generateEmailContent(data);
 
+    // Use test recipient when using Resend sandbox (unverified domain)
+    // Production: verify your domain at resend.com/domains and update the from address
+    const isTestMode = true; // Set to false after verifying domain
+    const testRecipient = "brezcollc@gmail.com";
+    const recipient = isTestMode ? testRecipient : data.carrierEmail;
+
     // Send the email using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -176,12 +182,14 @@ const handler = async (req: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         from: "Loss Run Requests <onboarding@resend.dev>",
-        to: [data.carrierEmail],
+        to: [recipient],
         subject: subject,
         html: html,
         text: body,
       }),
     });
+
+    console.log(`Email sent to ${recipient} (test mode: ${isTestMode}, original: ${data.carrierEmail})`);
 
     if (!emailResponse.ok) {
       const errorData = await emailResponse.json();
