@@ -143,8 +143,6 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
   };
 
   const handleSubmit = async () => {
-    console.log("[NewRequestForm] Submit clicked", { clientId, selectedPolicyId });
-
     // Validation
     if (!clientId) {
       toast({ title: "Validation Error", description: "Please select a client", variant: "destructive" });
@@ -165,8 +163,6 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
         policy_expiration_date: policyExpirationDate || undefined,
         notes: notes.trim() || undefined,
       });
-
-      console.log("[NewRequestForm] Request created:", request.id);
       
       toast({
         title: "Request Created & Email Sent",
@@ -177,7 +173,6 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error("[NewRequestForm] Submit error:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create request",

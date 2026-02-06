@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,179 +39,181 @@ const coverageTypes: { value: CoverageType; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-export function PolicyFormDialog({ open, onOpenChange, clientId, policy }: PolicyFormDialogProps) {
-  const { data: carriers, isLoading: carriersLoading } = useCarriers();
-  const createPolicy = useCreatePolicy();
-  const updatePolicy = useUpdatePolicy();
-  const isEditing = !!policy;
+export const PolicyFormDialog = forwardRef<HTMLDivElement, PolicyFormDialogProps>(
+  function PolicyFormDialog({ open, onOpenChange, clientId, policy }, ref) {
+    const { data: carriers, isLoading: carriersLoading } = useCarriers();
+    const createPolicy = useCreatePolicy();
+    const updatePolicy = useUpdatePolicy();
+    const isEditing = !!policy;
 
-  const [formData, setFormData] = useState({
-    carrier_id: "",
-    policy_number: "",
-    coverage_type: "" as CoverageType | "",
-    effective_date: "",
-    expiration_date: "",
-    notes: "",
-  });
+    const [formData, setFormData] = useState({
+      carrier_id: "",
+      policy_number: "",
+      coverage_type: "" as CoverageType | "",
+      effective_date: "",
+      expiration_date: "",
+      notes: "",
+    });
 
-  useEffect(() => {
-    if (policy) {
-      setFormData({
-        carrier_id: policy.carrier_id,
-        policy_number: policy.policy_number,
-        coverage_type: policy.coverage_type,
-        effective_date: policy.effective_date || "",
-        expiration_date: policy.expiration_date || "",
-        notes: policy.notes || "",
-      });
-    } else {
-      setFormData({
-        carrier_id: "",
-        policy_number: "",
-        coverage_type: "",
-        effective_date: "",
-        expiration_date: "",
-        notes: "",
-      });
-    }
-  }, [policy, open]);
+    useEffect(() => {
+      if (policy) {
+        setFormData({
+          carrier_id: policy.carrier_id,
+          policy_number: policy.policy_number,
+          coverage_type: policy.coverage_type,
+          effective_date: policy.effective_date || "",
+          expiration_date: policy.expiration_date || "",
+          notes: policy.notes || "",
+        });
+      } else {
+        setFormData({
+          carrier_id: "",
+          policy_number: "",
+          coverage_type: "",
+          effective_date: "",
+          expiration_date: "",
+          notes: "",
+        });
+      }
+    }, [policy, open]);
 
-  const handleSubmit = async () => {
-    if (!formData.carrier_id || !formData.policy_number || !formData.coverage_type) return;
+    const handleSubmit = async () => {
+      if (!formData.carrier_id || !formData.policy_number || !formData.coverage_type) return;
 
-    if (isEditing && policy) {
-      await updatePolicy.mutateAsync({
-        id: policy.id,
-        carrier_id: formData.carrier_id,
-        policy_number: formData.policy_number.trim(),
-        coverage_type: formData.coverage_type as CoverageType,
-        effective_date: formData.effective_date || undefined,
-        expiration_date: formData.expiration_date || undefined,
-        notes: formData.notes.trim() || undefined,
-      });
-    } else {
-      await createPolicy.mutateAsync({
-        client_id: clientId,
-        carrier_id: formData.carrier_id,
-        policy_number: formData.policy_number.trim(),
-        coverage_type: formData.coverage_type as CoverageType,
-        effective_date: formData.effective_date || undefined,
-        expiration_date: formData.expiration_date || undefined,
-        notes: formData.notes.trim() || undefined,
-      });
-    }
+      if (isEditing && policy) {
+        await updatePolicy.mutateAsync({
+          id: policy.id,
+          carrier_id: formData.carrier_id,
+          policy_number: formData.policy_number.trim(),
+          coverage_type: formData.coverage_type as CoverageType,
+          effective_date: formData.effective_date || undefined,
+          expiration_date: formData.expiration_date || undefined,
+          notes: formData.notes.trim() || undefined,
+        });
+      } else {
+        await createPolicy.mutateAsync({
+          client_id: clientId,
+          carrier_id: formData.carrier_id,
+          policy_number: formData.policy_number.trim(),
+          coverage_type: formData.coverage_type as CoverageType,
+          effective_date: formData.effective_date || undefined,
+          expiration_date: formData.expiration_date || undefined,
+          notes: formData.notes.trim() || undefined,
+        });
+      }
 
-    onOpenChange(false);
-  };
+      onOpenChange(false);
+    };
 
-  const isPending = createPolicy.isPending || updatePolicy.isPending;
-  const isValid = formData.carrier_id && formData.policy_number.trim() && formData.coverage_type;
+    const isPending = createPolicy.isPending || updatePolicy.isPending;
+    const isValid = formData.carrier_id && formData.policy_number.trim() && formData.coverage_type;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Policy" : "Add New Policy"}</DialogTitle>
-          <DialogDescription>
-            {isEditing 
-              ? "Update the policy information below."
-              : "Enter the policy details to add it to this client."}
-          </DialogDescription>
-        </DialogHeader>
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent ref={ref} className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{isEditing ? "Edit Policy" : "Add New Policy"}</DialogTitle>
+            <DialogDescription>
+              {isEditing 
+                ? "Update the policy information below."
+                : "Enter the policy details to add it to this client."}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="carrier">Carrier *</Label>
-            <Select
-              value={formData.carrier_id}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, carrier_id: value }))}
-              disabled={carriersLoading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={carriersLoading ? "Loading..." : "Select carrier"} />
-              </SelectTrigger>
-              <SelectContent>
-                {carriers?.map((carrier) => (
-                  <SelectItem key={carrier.id} value={carrier.id}>
-                    {carrier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="policy_number">Policy Number *</Label>
-            <Input
-              id="policy_number"
-              placeholder="e.g., WC-1234567"
-              value={formData.policy_number}
-              onChange={(e) => setFormData((prev) => ({ ...prev, policy_number: e.target.value }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="coverage_type">Coverage Type *</Label>
-            <Select
-              value={formData.coverage_type}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, coverage_type: value as CoverageType }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select coverage type" />
-              </SelectTrigger>
-              <SelectContent>
-                {coverageTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="effective_date">Effective Date</Label>
+              <Label htmlFor="carrier">Carrier *</Label>
+              <Select
+                value={formData.carrier_id}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, carrier_id: value }))}
+                disabled={carriersLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={carriersLoading ? "Loading..." : "Select carrier"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {carriers?.map((carrier) => (
+                    <SelectItem key={carrier.id} value={carrier.id}>
+                      {carrier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="policy_number">Policy Number *</Label>
               <Input
-                id="effective_date"
-                type="date"
-                value={formData.effective_date}
-                onChange={(e) => setFormData((prev) => ({ ...prev, effective_date: e.target.value }))}
+                id="policy_number"
+                placeholder="e.g., WC-1234567"
+                value={formData.policy_number}
+                onChange={(e) => setFormData((prev) => ({ ...prev, policy_number: e.target.value }))}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="expiration_date">Expiration Date</Label>
-              <Input
-                id="expiration_date"
-                type="date"
-                value={formData.expiration_date}
-                onChange={(e) => setFormData((prev) => ({ ...prev, expiration_date: e.target.value }))}
+              <Label htmlFor="coverage_type">Coverage Type *</Label>
+              <Select
+                value={formData.coverage_type}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, coverage_type: value as CoverageType }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select coverage type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {coverageTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="effective_date">Effective Date</Label>
+                <Input
+                  id="effective_date"
+                  type="date"
+                  value={formData.effective_date}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, effective_date: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="expiration_date">Expiration Date</Label>
+                <Input
+                  id="expiration_date"
+                  type="date"
+                  value={formData.expiration_date}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, expiration_date: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Additional notes about this policy..."
+                rows={3}
+                value={formData.notes}
+                onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Additional notes about this policy..."
-              rows={3}
-              value={formData.notes}
-              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-            />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isPending || !isValid}>
+              {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {isEditing ? "Save Changes" : "Add Policy"}
+            </Button>
           </div>
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isPending || !isValid}>
-            {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {isEditing ? "Save Changes" : "Add Policy"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+);

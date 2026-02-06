@@ -15,7 +15,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, FileText, Loader2, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, MoreHorizontal, FileText, Loader2, Trash2, Edit } from "lucide-react";
 import { usePoliciesByClient, useDeletePolicy } from "@/hooks/usePolicies";
 import { PolicyFormDialog } from "@/components/clients/PolicyFormDialog";
 import type { Policy } from "@/hooks/usePolicies";
@@ -39,6 +49,13 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
   const deletePolicy = useDeletePolicy();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+  const [deletingPolicy, setDeletingPolicy] = useState<Policy | null>(null);
+
+  const handleDelete = async () => {
+    if (!deletingPolicy) return;
+    await deletePolicy.mutateAsync({ id: deletingPolicy.id, clientId });
+    setDeletingPolicy(null);
+  };
 
   if (isLoading) {
     return (
@@ -78,10 +95,10 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
           <TableBody>
             {(policies || []).map((policy) => (
               <TableRow key={policy.id}>
-                <TableCell className="font-mono font-medium">
+                <TableCell className="font-mono font-medium max-w-[150px] truncate">
                   {policy.policy_number}
                 </TableCell>
-                <TableCell>{policy.carriers?.name || "Unknown"}</TableCell>
+                <TableCell className="max-w-[120px] truncate">{policy.carriers?.name || "Unknown"}</TableCell>
                 <TableCell>
                   <Badge variant="secondary">
                     {coverageTypeLabels[policy.coverage_type] || policy.coverage_type}
@@ -106,11 +123,11 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => setEditingPolicy(policy)}>
-                        <FileText className="w-4 h-4 mr-2" />
+                        <Edit className="w-4 h-4 mr-2" />
                         Edit Policy
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        onClick={() => deletePolicy.mutate({ id: policy.id, clientId })}
+                        onClick={() => setDeletingPolicy(policy)}
                         className="text-destructive"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
@@ -123,10 +140,11 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
             ))}
             {(!policies || policies.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <FileText className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-muted-foreground">
-                    No policies yet. Click "Add Policy" to create one.
+                <TableCell colSpan={6} className="text-center py-12">
+                  <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground font-medium mb-1">No policies yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Add policies to track loss run requests for this client.
                   </p>
                 </TableCell>
               </TableRow>
@@ -149,6 +167,30 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
           policy={editingPolicy}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingPolicy} onOpenChange={(open) => !open && setDeletingPolicy(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Policy</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete policy <strong>{deletingPolicy?.policy_number}</strong>? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePolicy.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              disabled={deletePolicy.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletePolicy.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

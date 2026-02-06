@@ -102,7 +102,6 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
       return;
     }
     
-    console.log("[RequestDetailView] Status change:", request.id, newStatus);
     try {
       await updateStatus.mutateAsync({ id: request.id, status: newStatus });
       toast({
@@ -110,7 +109,6 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
         description: `Request status changed to ${newStatus.replace("_", " ")}`,
       });
     } catch (error) {
-      console.error("Status update error:", error);
       toast({
         title: "Error",
         description: "Failed to update status",
@@ -129,11 +127,9 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
       return;
     }
     
-    console.log("[RequestDetailView] Resend email clicked:", request.id);
     try {
       await resendEmail.mutateAsync(request);
     } catch (error) {
-      console.error("Resend email error:", error);
       toast({
         title: "Error",
         description: "Failed to send email",
@@ -147,7 +143,6 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
       await markAsReviewed.mutateAsync(request.id);
       setShowReviewConfirm(false);
     } catch (error) {
-      console.error("Mark as reviewed error:", error);
       toast({
         title: "Error",
         description: "Failed to mark request as reviewed",
