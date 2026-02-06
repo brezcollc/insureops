@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,8 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Send, FileText, Edit3 } from "lucide-react";
-import { emailTemplates, applyTemplate, formatCoverageType, type TemplateVariables } from "@/lib/emailTemplates";
+import { Loader2, Send, Mail, AlertCircle } from "lucide-react";
+import { emailTemplates, applyTemplate, type TemplateVariables } from "@/lib/emailTemplates";
 
 interface EmailTemplatePickerProps {
   open: boolean;
@@ -39,136 +40,152 @@ export function EmailTemplatePicker({
 }: EmailTemplatePickerProps) {
   const defaultTemplateId = isFollowUp ? "follow_up" : "initial_request";
   const [selectedTemplateId, setSelectedTemplateId] = useState(defaultTemplateId);
-  const [isEditing, setIsEditing] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [hasUserEdited, setHasUserEdited] = useState(false);
 
-  const selectedTemplate = useMemo(
-    () => emailTemplates.find((t) => t.id === selectedTemplateId) || emailTemplates[0],
-    [selectedTemplateId]
-  );
-
-  const appliedContent = useMemo(
-    () => applyTemplate(selectedTemplate, variables),
-    [selectedTemplate, variables]
-  );
-
-  const [editedSubject, setEditedSubject] = useState(appliedContent.subject);
-  const [editedBody, setEditedBody] = useState(appliedContent.body);
-
-  // Reset edited content when template changes
-  const handleTemplateChange = (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    const template = emailTemplates.find((t) => t.id === templateId);
-    if (template) {
-      const applied = applyTemplate(template, variables);
-      setEditedSubject(applied.subject);
-      setEditedBody(applied.body);
-    }
-    setIsEditing(false);
-  };
-
-  // Reset when dialog opens
-  useMemo(() => {
+  // Initialize/reset content when dialog opens
+  useEffect(() => {
     if (open) {
       const templateId = isFollowUp ? "follow_up" : "initial_request";
       setSelectedTemplateId(templateId);
       const template = emailTemplates.find((t) => t.id === templateId);
       if (template) {
         const applied = applyTemplate(template, variables);
-        setEditedSubject(applied.subject);
-        setEditedBody(applied.body);
+        setSubject(applied.subject);
+        setBody(applied.body);
       }
-      setIsEditing(false);
+      setHasUserEdited(false);
     }
   }, [open, isFollowUp, variables]);
 
+  // Handle template change
+  const handleTemplateChange = (templateId: string) => {
+    // If user has edited, confirm before replacing
+    if (hasUserEdited) {
+      const confirmed = window.confirm(
+        "Switching templates will replace your current edits. Continue?"
+      );
+      if (!confirmed) return;
+    }
+
+    setSelectedTemplateId(templateId);
+    const template = emailTemplates.find((t) => t.id === templateId);
+    if (template) {
+      const applied = applyTemplate(template, variables);
+      setSubject(applied.subject);
+      setBody(applied.body);
+    }
+    setHasUserEdited(false);
+  };
+
+  const handleSubjectChange = (value: string) => {
+    setSubject(value);
+    setHasUserEdited(true);
+  };
+
+  const handleBodyChange = (value: string) => {
+    setBody(value);
+    setHasUserEdited(true);
+  };
+
   const handleSend = async () => {
-    const subject = isEditing ? editedSubject : appliedContent.subject;
-    const body = isEditing ? editedBody : appliedContent.body;
+    if (!subject.trim() || !body.trim()) return;
     await onSend(subject, body, selectedTemplateId);
   };
 
-  const displaySubject = isEditing ? editedSubject : appliedContent.subject;
-  const displayBody = isEditing ? editedBody : appliedContent.body;
+  const isValid = subject.trim().length > 0 && body.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
+            <Mail className="w-5 h-5 text-primary" />
             Compose Email
           </DialogTitle>
           <DialogDescription>
-            Select a template and customize before sending.
+            Select a template, review the content, and customize before sending.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-2">
           {/* Template Selector */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Label className="text-sm font-medium">Template</Label>
-              <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {emailTemplates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              variant={isEditing ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-              className="mt-6"
-            >
-              <Edit3 className="w-4 h-4 mr-1" />
-              {isEditing ? "Editing" : "Edit"}
-            </Button>
+          <div>
+            <Label htmlFor="template-select" className="text-sm font-medium">
+              Email Template
+            </Label>
+            <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+              <SelectTrigger id="template-select" className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {emailTemplates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Selecting a template will populate the subject and message below.
+            </p>
           </div>
 
-          {/* Subject */}
+          {/* Subject - Always Editable */}
           <div>
-            <Label className="text-sm font-medium">Subject</Label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={editedSubject}
-                onChange={(e) => setEditedSubject(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-md text-sm bg-background"
-              />
-            ) : (
-              <p className="mt-1 text-sm bg-muted p-2 rounded-md">{displaySubject}</p>
+            <Label htmlFor="email-subject" className="text-sm font-medium">
+              Subject <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="email-subject"
+              type="text"
+              value={subject}
+              onChange={(e) => handleSubjectChange(e.target.value)}
+              placeholder="Enter email subject..."
+              className="mt-1.5"
+            />
+            {!subject.trim() && (
+              <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Subject is required
+              </p>
             )}
           </div>
 
-          {/* Body */}
+          {/* Body - Always Editable */}
           <div>
-            <Label className="text-sm font-medium">Message</Label>
-            {isEditing ? (
-              <Textarea
-                value={editedBody}
-                onChange={(e) => setEditedBody(e.target.value)}
-                className="mt-1 min-h-[300px] font-mono text-sm"
-              />
-            ) : (
-              <div className="mt-1 text-sm bg-muted p-3 rounded-md whitespace-pre-wrap max-h-[300px] overflow-y-auto font-mono">
-                {displayBody}
-              </div>
+            <Label htmlFor="email-body" className="text-sm font-medium">
+              Message <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="email-body"
+              value={body}
+              onChange={(e) => handleBodyChange(e.target.value)}
+              placeholder="Enter email message..."
+              className="mt-1.5 min-h-[280px] font-mono text-sm"
+            />
+            {!body.trim() && (
+              <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Message is required
+              </p>
             )}
           </div>
+
+          {/* Info about editing */}
+          {hasUserEdited && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              You have made custom edits to this email.
+            </p>
+          )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
             Cancel
           </Button>
-          <Button onClick={handleSend} disabled={isSending}>
+          <Button onClick={handleSend} disabled={isSending || !isValid}>
             {isSending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
