@@ -53,11 +53,18 @@ const Index = () => {
     return <DashboardView activeTab={activeTab} searchQuery={searchQuery} />;
   };
 
+  // Hide search on settings and help pages
+  const showSearch = activeTab !== "settings" && activeTab !== "help";
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       <div className="flex-1 flex flex-col min-h-screen">
-        <Header searchQuery={searchQuery} onSearchChange={handleSearchChange} />
+        <Header 
+          searchQuery={searchQuery} 
+          onSearchChange={handleSearchChange} 
+          showSearch={showSearch}
+        />
         <main className="flex-1 overflow-auto">
           {renderContent()}
         </main>
