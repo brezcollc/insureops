@@ -1,7 +1,6 @@
- import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
- import { supabase } from "@/integrations/supabase/client";
- import { useToast } from "@/hooks/use-toast";
- import { useAgentAction } from "@/hooks/useAgentAction";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
  
  export interface LossRunDocument {
    id: string;
@@ -33,87 +32,76 @@
    });
  }
  
- interface UploadDocumentParams {
-   requestId: string;
-   file: File;
-   autoTriggerAgent?: boolean;
-   isReviewed?: boolean;
- }
+interface UploadDocumentParams {
+  requestId: string;
+  file: File;
+  isReviewed?: boolean;
+}
  
- export function useUploadDocument() {
-   const queryClient = useQueryClient();
-   const { toast } = useToast();
-   const agentAction = useAgentAction({ silent: false });
- 
-   return useMutation({
-     mutationFn: async ({ requestId, file, autoTriggerAgent = true, isReviewed = false }: UploadDocumentParams) => {
-       // Generate unique file path
-       const fileExt = file.name.split(".").pop();
-       const fileName = `${requestId}/${Date.now()}-${file.name}`;
-       
-       // Upload to storage
-       const { data: uploadData, error: uploadError } = await supabase.storage
-         .from("loss-run-documents")
-         .upload(fileName, file, {
-           cacheControl: "3600",
-           upsert: false,
-         });
-       
-       if (uploadError) {
-         throw new Error(`Upload failed: ${uploadError.message}`);
-       }
-       
-       // Record in database
-       const { data: docRecord, error: dbError } = await supabase
-         .from("loss_run_documents")
-         .insert([{
-           request_id: requestId,
-           file_name: file.name,
-           file_path: uploadData.path,
-           file_size: file.size,
-           mime_type: file.type,
-           uploaded_by: "Manual Upload",
-         }])
-         .select()
-         .single();
-       
-       if (dbError) {
-         throw new Error(`Failed to record document: ${dbError.message}`);
-       }
-       
-       return { document: docRecord, autoTriggerAgent, isReviewed, requestId };
-     },
-     onSuccess: async (result) => {
-       queryClient.invalidateQueries({ queryKey: ["loss_run_documents", result.requestId] });
-       queryClient.invalidateQueries({ queryKey: ["loss_run_requests"] });
-       
-       toast({
-         title: "Document Uploaded",
-         description: `${result.document.file_name} uploaded successfully`,
-       });
-       
-       // Auto-trigger agent if enabled and request is not reviewed
-       if (result.autoTriggerAgent && !result.isReviewed) {
-         try {
-           await agentAction.mutateAsync({
-             requestId: result.requestId,
-             triggerType: "document_upload",
-           });
-         } catch (error) {
-           console.error("Agent auto-trigger failed:", error);
-           // Don't show error - the upload was successful
-         }
-       }
-     },
-     onError: (error: Error) => {
-       toast({
-         title: "Upload Failed",
-         description: error.message,
-         variant: "destructive",
-       });
-     },
-   });
- }
+export function useUploadDocument() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ requestId, file, isReviewed = false }: UploadDocumentParams) => {
+      // Generate unique file path
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${requestId}/${Date.now()}-${file.name}`;
+      
+      // Upload to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("loss-run-documents")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+      
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+      
+      // Record in database
+      const { data: docRecord, error: dbError } = await supabase
+        .from("loss_run_documents")
+        .insert([{
+          request_id: requestId,
+          file_name: file.name,
+          file_path: uploadData.path,
+          file_size: file.size,
+          mime_type: file.type,
+          uploaded_by: "Manual Upload",
+        }])
+        .select()
+        .single();
+      
+      if (dbError) {
+        throw new Error(`Failed to record document: ${dbError.message}`);
+      }
+      
+      return { document: docRecord, requestId };
+    },
+    onSuccess: async (result) => {
+      // Invalidate all document-related queries
+      queryClient.invalidateQueries({ queryKey: ["loss_run_documents", result.requestId] });
+      queryClient.invalidateQueries({ queryKey: ["loss_run_requests"] });
+      queryClient.invalidateQueries({ queryKey: ["client_documents"] });
+      
+      toast({
+        title: "Document Uploaded",
+        description: `${result.document.file_name} uploaded successfully`,
+      });
+      
+      // Note: Agent auto-trigger removed - documents are for human review only
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
  
  export function useDeleteDocument() {
    const queryClient = useQueryClient();
@@ -142,13 +130,14 @@
        
        return { requestId };
      },
-     onSuccess: (result) => {
-       queryClient.invalidateQueries({ queryKey: ["loss_run_documents", result.requestId] });
-       toast({
-         title: "Document Deleted",
-         description: "Document removed successfully",
-       });
-     },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["loss_run_documents", result.requestId] });
+      queryClient.invalidateQueries({ queryKey: ["client_documents"] });
+      toast({
+        title: "Document Deleted",
+        description: "Document removed successfully",
+      });
+    },
      onError: (error: Error) => {
        toast({
          title: "Delete Failed",
