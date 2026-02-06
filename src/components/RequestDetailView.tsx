@@ -27,15 +27,19 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CopyButton } from "@/components/CopyButton";
+import { InternalNotes } from "@/components/InternalNotes";
+import { EmailTemplatePicker } from "@/components/EmailTemplatePicker";
+import { formatCoverageType } from "@/lib/emailTemplates";
 import { Bot, Loader2, Mail, Send, ShieldCheck, Lock, CheckCircle2, AlertTriangle } from "lucide-react";
 import {
   LossRunRequest,
   useEmailLogs,
   useUpdateLossRunStatus,
-  useResendEmail,
   useMarkAsReviewed,
   LossRunStatus,
 } from "@/hooks/useLossRunRequests";
+import { useSendEmailWithTemplate } from "@/hooks/useSendEmailWithTemplate";
 import { useAgentAction } from "@/hooks/useAgentAction";
 import { useToast } from "@/hooks/use-toast";
 import { DocumentUploadSection } from "@/components/DocumentUploadSection";
@@ -67,11 +71,12 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
   const { toast } = useToast();
   const { data: emailLogs, isLoading: logsLoading } = useEmailLogs(request?.id || null);
   const updateStatus = useUpdateLossRunStatus();
-  const resendEmail = useResendEmail();
+  const sendEmailWithTemplate = useSendEmailWithTemplate();
   const agentAction = useAgentAction();
   const markAsReviewed = useMarkAsReviewed();
 
   const [showReviewConfirm, setShowReviewConfirm] = useState(false);
+  const [showEmailPicker, setShowEmailPicker] = useState(false);
 
   const isReviewed = !!request?.reviewed_at;
 
@@ -117,7 +122,7 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
     }
   };
 
-  const handleResendEmail = async () => {
+  const handleOpenEmailPicker = () => {
     if (isReviewed) {
       toast({
         title: "Request Locked",
@@ -126,16 +131,30 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
       });
       return;
     }
-    
-    try {
-      await resendEmail.mutateAsync(request);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send email",
-        variant: "destructive",
-      });
-    }
+    setShowEmailPicker(true);
+  };
+
+  const handleSendEmail = async (subject: string, body: string, templateId: string) => {
+    await sendEmailWithTemplate.mutateAsync({
+      request,
+      customSubject: subject,
+      customBody: body,
+      templateId,
+    });
+    setShowEmailPicker(false);
+  };
+
+  const policyPeriod = request.policy_effective_date && request.policy_expiration_date
+    ? `${request.policy_effective_date} to ${request.policy_expiration_date}`
+    : "Please provide all available loss history";
+
+  const templateVariables = {
+    client_name: request.clients?.name || "Unknown Client",
+    policy_number: request.policy_number,
+    coverage_type: formatCoverageType(request.coverage_type),
+    policy_period: policyPeriod,
+    sender_name: "Insurance Operations Team",
+    agency_name: "Acme Insurance Group",
   };
 
   const handleMarkAsReviewed = async () => {
@@ -173,7 +192,9 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Client</p>
-                <p className="font-medium">{request.clients?.name || "Unknown"}</p>
+                <div className="flex items-center gap-1 group">
+                  <p className="font-medium">{request.clients?.name || "Unknown"}</p>
+                </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Carrier</p>
@@ -181,7 +202,10 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Policy Number</p>
-                <p className="font-mono">{request.policy_number}</p>
+                <div className="flex items-center gap-1 group">
+                  <p className="font-mono">{request.policy_number}</p>
+                  <CopyButton value={request.policy_number} />
+                </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Coverage Type</p>
@@ -197,9 +221,14 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Carrier Email</p>
-                <p className="font-medium text-sm">
-                  {request.carriers?.loss_run_email || "N/A"}
-                </p>
+                <div className="flex items-center gap-1 group">
+                  <p className="font-medium text-sm truncate">
+                    {request.carriers?.loss_run_email || "N/A"}
+                  </p>
+                  {request.carriers?.loss_run_email && (
+                    <CopyButton value={request.carriers.loss_run_email} />
+                  )}
+                </div>
               </div>
               {request.policy_effective_date && (
                 <div>
@@ -219,12 +248,12 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
               )}
             </div>
 
-            {request.notes && (
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Notes</p>
-                <p className="text-sm bg-muted p-3 rounded-lg whitespace-pre-wrap">{request.notes}</p>
-              </div>
-            )}
+            {/* Internal Notes Section */}
+            <InternalNotes 
+              requestId={request.id} 
+              initialNotes={request.notes} 
+              isLocked={isReviewed} 
+            />
 
             <Separator />
 
@@ -348,16 +377,16 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={handleResendEmail}
-                  disabled={resendEmail.isPending || isReviewed}
+                  onClick={handleOpenEmailPicker}
+                  disabled={sendEmailWithTemplate.isPending || isReviewed}
                   title={isReviewed ? "Request is reviewed and locked" : undefined}
                 >
-                  {resendEmail.isPending ? (
+                  {sendEmailWithTemplate.isPending ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <Send className="w-4 h-4 mr-2" />
                   )}
-                  Resend Email
+                  Send Email
                 </Button>
               </div>
             </div>
@@ -451,6 +480,16 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Email Template Picker */}
+      <EmailTemplatePicker
+        open={showEmailPicker}
+        onOpenChange={setShowEmailPicker}
+        variables={templateVariables}
+        onSend={handleSendEmail}
+        isSending={sendEmailWithTemplate.isPending}
+        isFollowUp={request.status === "follow_up_sent"}
+      />
     </>
   );
 }

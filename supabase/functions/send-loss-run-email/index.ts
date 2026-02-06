@@ -20,6 +20,10 @@ interface LossRunEmailRequest {
   senderName?: string;
   senderEmail?: string;
   agencyName?: string;
+  // Custom template support
+  customSubject?: string;
+  customBody?: string;
+  templateId?: string;
 }
 
 const formatCoverageType = (type: string): string => {
@@ -36,6 +40,33 @@ const formatCoverageType = (type: string): string => {
 };
 
 const generateEmailContent = (data: LossRunEmailRequest): { subject: string; body: string; html: string } => {
+  // If custom content provided, use it directly
+  if (data.customSubject && data.customBody) {
+    const subject = data.customSubject;
+    const body = data.customBody;
+    
+    // Convert plain text body to HTML
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${body}</pre>
+  </div>
+</body>
+</html>
+    `.trim();
+
+    return { subject, body, html };
+  }
+
+  // Default template generation
   const coverageTypeFormatted = formatCoverageType(data.coverageType);
   const isFollowUp = data.isFollowUp || false;
   const senderName = data.senderName || "Insurance Operations Team";
