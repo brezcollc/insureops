@@ -65,7 +65,6 @@ export function DocumentUploadSection({ requestId, isReviewed }: DocumentUploadS
         .createSignedUrl(doc.file_path, 3600); // 1 hour expiry
 
       if (error) {
-        console.error("View error:", error);
         return;
       }
 
@@ -81,7 +80,6 @@ export function DocumentUploadSection({ requestId, isReviewed }: DocumentUploadS
       .download(doc.file_path);
 
     if (error) {
-      console.error("Download error:", error);
       return;
     }
 

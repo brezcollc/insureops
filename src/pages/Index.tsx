@@ -11,7 +11,6 @@ const Index = () => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   const handleSearchChange = (query: string) => {
-    console.log("[Index] Search query updated:", query);
     setSearchQuery(query);
   };
 
