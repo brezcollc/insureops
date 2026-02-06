@@ -10,8 +10,15 @@ export interface LossRunClaim {
   status: "open" | "closed" | null;
 }
 
+export interface LossRunDebug {
+  claim_rows_detected: number;
+  row_anchors: string[];
+  notes: string;
+}
+
 export interface LossRunData {
   claims: LossRunClaim[];
+  _debug?: LossRunDebug;
 }
 
 export interface ParseLossRunResponse {
