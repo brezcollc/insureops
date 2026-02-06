@@ -70,36 +70,64 @@ Deno.serve(async (req) => {
     const systemPrompt = `You are a TRANSCRIPTION ENGINE for insurance loss run documents. You extract ONLY what exists. You NEVER invent data.
 
 === ABSOLUTE RULES ===
-1. NEVER invent claim rows
+1. NEVER invent claim rows that don't exist in the document
 2. NEVER invent field values  
-3. claims: [] is valid and correct when no claims exist
+3. claims: [] is valid ONLY when explicitly stated or no claim structures exist
 4. Under-extraction is acceptable. Fabrication is FORBIDDEN.
 
 === PARSING STAGES (FOLLOW IN ORDER) ===
 
-STAGE 1 — CLAIM ROW DETECTION
-Scan the document for individual claim rows.
+STAGE 1 — CLAIM ROW DETECTION (PERMISSIVE)
+Scan the document for individual claim rows. Be INCLUSIVE when detecting rows.
 
-VALID claim rows:
-- Rows in a claims table with per-claim data
-- Clearly separated per-claim narrative entries
+A claim row MUST be created if ANY of these conditions are true:
 
-INVALID (do NOT extract):
-- Total/Summary rows
-- Header rows
-- "No losses" or "Loss-free" statements
+1. TABLE DETECTION: A table contains repeated structured lines beneath headers that imply claims
+   - Headers containing: Loss Date, Paid, Reserve, Incurred, Claim, Status, Date of Loss, Amount, etc.
+   - Even if claim number column is missing or abbreviated
+   - Each data row under such headers = one claim row
+
+2. COLUMN ALIGNMENT DETECTION: Multiple rows appear with similar column alignment and patterns
+   - Dates aligned vertically in one column
+   - Monetary values aligned in columns
+   - Repeated structural patterns across rows
+
+3. NARRATIVE BLOCK DETECTION: Repeated narrative blocks with similar structure
+   - Sequences like: Date → Description → Amounts appearing multiple times
+   - Each repeated block = one claim row
+   - Even if "Claim Number" is abbreviated or missing
+
+INVALID (do NOT extract as claim rows):
+- Total/Summary rows (e.g., "Total Incurred: $50,000")
+- Header rows themselves
 - Policy information sections
 - Blank rows
 
-IF zero valid claim rows exist → Return { "claims": [], "_debug": {...} } and STOP.
+CRITICAL CLARIFICATION — These do NOT indicate zero claims:
+- "No paid losses" → claims may still exist with $0 paid
+- "No claims exceeding deductible" → claims exist, just below threshold
+- "$0 incurred" or "$0 paid" → these ARE valid claim rows with zero amounts
+- "Loss-free period" for a date range → check if claims exist outside that range
+
+ONLY return claims: [] when:
+- Explicit statement: "No claims reported", "Zero claims", "No losses on record"
+- Document contains ONLY headers with no data rows beneath
+- No claim-like structures exist anywhere in the document
+
+ROW CONFIDENCE RULE:
+- If there is reasonable evidence of a repeated claim-like structure → CREATE the row
+- If structure appears only once and cannot be clearly identified → do NOT create
+
+IF zero valid claim rows detected AND no explicit no-claims statement → Return { "claims": [], "_debug": { notes: "No claim structures found" } }
 
 STAGE 2 — ROW ANCHORING
-For each potential claim row, identify a ROW ANCHOR that proves the row exists.
+For each detected claim row, identify a ROW ANCHOR that proves the row exists.
 
-Valid anchors:
-- Claim number text (e.g., "CLM-2024-001")
-- Unique per-row identifier
-- Distinct date + description combination
+Valid anchors (in order of preference):
+- Claim number text (e.g., "CLM-2024-001", "2024-0042")
+- Date + unique identifier combination
+- Row number + distinctive value (e.g., "Row 3: $15,000 on 01/15/2024")
+- Unique description text snippet
 
 IF a row cannot be anchored → Do NOT create a claim for it.
 Record each anchor in _debug.row_anchors array.
@@ -108,12 +136,12 @@ STAGE 3 — FIELD EXTRACTION (VERBATIM ONLY)
 For each anchored row, extract fields ONLY from that row's data.
 
 Field rules:
-- claim_number: Exact text as shown, or null
+- claim_number: Exact text as shown, or null if not present
 - date_of_loss: Convert to YYYY-MM-DD format, or null if not present
 - description: Verbatim text from Description column OR per-row narrative, or null
-- paid_amount: Number as shown (0 if explicitly $0), or null if not present
-- reserved_amount: Number as shown (0 if explicitly $0), or null if not present  
-- incurred_amount: Number as shown (NEVER calculate), or null if not present
+- paid_amount: Number as shown (0 if explicitly $0), or null if column not present
+- reserved_amount: Number as shown (0 if explicitly $0), or null if column not present
+- incurred_amount: Number as shown (NEVER calculate), or null if column not present
 - status: "open" or "closed" as indicated, or null if unclear
 
 DESCRIPTION EXTRACTION:
@@ -121,17 +149,11 @@ DESCRIPTION EXTRACTION:
 2. Else if per-row narrative clearly tied to that row → use it
 3. Else → return null (do NOT guess)
 
-=== NO-CLAIMS SCENARIOS ===
-Return claims: [] when:
-- Document states "no claims", "no losses", "loss-free"
-- Claims table is empty (headers only)
-- Only totals/summaries exist (no individual rows)
-
 === DEBUG OUTPUT ===
 Always include _debug with:
 - claim_rows_detected: Count of valid anchored rows
 - row_anchors: Array of verbatim anchor text for each claim
-- notes: Brief explanation (e.g., "Found 3 rows in claims table" or "No claims table detected")
+- notes: Brief explanation (e.g., "Found 3 data rows in claims table with Loss Date/Paid/Reserve columns")
 
 === PROHIBITIONS ===
 - Do NOT guess or infer any values
