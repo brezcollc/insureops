@@ -21,6 +21,7 @@ export interface ClientWithStats extends Client {
   open_request_count: number;
   reviewed_request_count: number;
   total_request_count: number;
+  last_activity: string | null;
 }
 
 export interface CreateClientInput {
@@ -83,10 +84,10 @@ export function useClientsWithStats(includeArchived = false) {
       
       if (policiesError) throw policiesError;
 
-      // Fetch open loss run request counts
+      // Fetch loss run requests with dates
       const { data: requests, error: requestsError } = await supabase
         .from("loss_run_requests")
-        .select("client_id, status, reviewed_at");
+        .select("client_id, status, reviewed_at, updated_at, request_date");
       
       if (requestsError) throw requestsError;
 
@@ -100,6 +101,7 @@ export function useClientsWithStats(includeArchived = false) {
       const openRequestCountMap = new Map<string, number>();
       const reviewedRequestCountMap = new Map<string, number>();
       const totalRequestCountMap = new Map<string, number>();
+      const lastActivityMap = new Map<string, string>();
       
       requests?.forEach((r) => {
         // Total count
@@ -114,6 +116,13 @@ export function useClientsWithStats(includeArchived = false) {
           const open = openRequestCountMap.get(r.client_id) || 0;
           openRequestCountMap.set(r.client_id, open + 1);
         }
+
+        // Track last activity (most recent updated_at or request_date)
+        const activityDate = r.updated_at || r.request_date;
+        const currentLast = lastActivityMap.get(r.client_id);
+        if (!currentLast || activityDate > currentLast) {
+          lastActivityMap.set(r.client_id, activityDate);
+        }
       });
 
       const clientsWithStats: ClientWithStats[] = (clients || []).map((client) => ({
@@ -123,6 +132,7 @@ export function useClientsWithStats(includeArchived = false) {
         open_request_count: openRequestCountMap.get(client.id) || 0,
         reviewed_request_count: reviewedRequestCountMap.get(client.id) || 0,
         total_request_count: totalRequestCountMap.get(client.id) || 0,
+        last_activity: lastActivityMap.get(client.id) || client.updated_at || null,
       }));
 
       return clientsWithStats;
