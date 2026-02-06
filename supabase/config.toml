@@ -2,9 +2,6 @@ project_id = "tifcgdrptxrdhpdegkto"
 
 [api]
 
-[functions.parse-loss-run]
-verify_jwt = false
-
 [functions.send-loss-run-email]
 verify_jwt = false
 
