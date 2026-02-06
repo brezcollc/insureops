@@ -18,14 +18,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileText } from "lucide-react";
+import { Loader2, Plus, FileText, ArrowRight, ArrowLeft, Mail } from "lucide-react";
 import {
   useClients,
-  useCreateLossRunRequest,
   useCreateClient,
   CoverageType,
 } from "@/hooks/useLossRunRequests";
 import { usePoliciesByClient, Policy } from "@/hooks/usePolicies";
+import { useCreateLossRunWithTemplate } from "@/hooks/useCreateLossRunWithTemplate";
+import { emailTemplates, applyTemplate, formatCoverageType } from "@/lib/emailTemplates";
 
 interface NewRequestFormProps {
   open: boolean;
@@ -44,12 +45,18 @@ const coverageTypeLabels: Record<CoverageType, string> = {
   other: "Other",
 };
 
+type Step = "details" | "compose";
+
 export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClientId }: NewRequestFormProps) {
   const { toast } = useToast();
   const { data: clients, isLoading: clientsLoading } = useClients();
-  const createRequest = useCreateLossRunRequest();
+  const createRequestWithTemplate = useCreateLossRunWithTemplate();
   const createClient = useCreateClient();
 
+  // Step state
+  const [currentStep, setCurrentStep] = useState<Step>("details");
+
+  // Details step state
   const [clientId, setClientId] = useState(preselectedClientId || "");
   const [selectedPolicyId, setSelectedPolicyId] = useState("");
   const [policyEffectiveDate, setPolicyEffectiveDate] = useState("");
@@ -60,6 +67,11 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
 
+  // Compose step state
+  const [selectedTemplateId, setSelectedTemplateId] = useState("initial_request");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+
   // Fetch policies for selected client
   const { data: policies, isLoading: policiesLoading } = usePoliciesByClient(clientId || null);
 
@@ -69,8 +81,26 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
     return policies.find((p) => p.id === selectedPolicyId) || null;
   }, [selectedPolicyId, policies]);
 
+  const selectedClient = clients?.find((c) => c.id === clientId);
+
   // Check if we're in client-scoped mode (client pre-selected)
   const isClientScoped = !!preselectedClientId;
+
+  // Template variables
+  const templateVariables = useMemo(() => {
+    const policyPeriod = policyEffectiveDate && policyExpirationDate
+      ? `${policyEffectiveDate} to ${policyExpirationDate}`
+      : "Please provide all available loss history";
+
+    return {
+      client_name: selectedClient?.name || "Unknown Client",
+      policy_number: selectedPolicy?.policy_number || "",
+      coverage_type: selectedPolicy ? formatCoverageType(selectedPolicy.coverage_type) : "",
+      policy_period: policyPeriod,
+      sender_name: "Insurance Operations Team",
+      agency_name: "Acme Insurance Group",
+    };
+  }, [selectedClient, selectedPolicy, policyEffectiveDate, policyExpirationDate]);
 
   // Update client_id when preselectedClientId changes
   React.useEffect(() => {
@@ -94,7 +124,15 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
     }
   }, [selectedPolicy]);
 
+  // Reset form when dialog closes
+  React.useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
+
   const resetForm = () => {
+    setCurrentStep("details");
     if (!isClientScoped) {
       setClientId("");
     }
@@ -105,6 +143,9 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
     setShowNewClient(false);
     setNewClientName("");
     setNewClientEmail("");
+    setSelectedTemplateId("initial_request");
+    setEmailSubject("");
+    setEmailBody("");
   };
 
   const handleCreateClient = async () => {
@@ -142,19 +183,49 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
     }
   };
 
-  const handleSubmit = async () => {
-    // Validation
-    if (!clientId) {
-      toast({ title: "Validation Error", description: "Please select a client", variant: "destructive" });
+  // Move to compose step
+  const handleContinueToCompose = () => {
+    if (!clientId || !selectedPolicyId || !selectedPolicy) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please select a client and policy first", 
+        variant: "destructive" 
+      });
       return;
     }
-    if (!selectedPolicyId || !selectedPolicy) {
-      toast({ title: "Validation Error", description: "Please select a policy", variant: "destructive" });
+
+    // Initialize email content from template
+    const template = emailTemplates.find((t) => t.id === selectedTemplateId) || emailTemplates[0];
+    const applied = applyTemplate(template, templateVariables);
+    setEmailSubject(applied.subject);
+    setEmailBody(applied.body);
+
+    setCurrentStep("compose");
+  };
+
+  // Handle template change in compose step
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const template = emailTemplates.find((t) => t.id === templateId);
+    if (template) {
+      const applied = applyTemplate(template, templateVariables);
+      setEmailSubject(applied.subject);
+      setEmailBody(applied.body);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedPolicy || !emailSubject.trim() || !emailBody.trim()) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please fill in all required fields", 
+        variant: "destructive" 
+      });
       return;
     }
 
     try {
-      const request = await createRequest.mutateAsync({
+      await createRequestWithTemplate.mutateAsync({
         client_id: clientId,
         carrier_id: selectedPolicy.carrier_id,
         policy_number: selectedPolicy.policy_number,
@@ -162,6 +233,9 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
         policy_effective_date: policyEffectiveDate || undefined,
         policy_expiration_date: policyExpirationDate || undefined,
         notes: notes.trim() || undefined,
+        customSubject: emailSubject,
+        customBody: emailBody,
+        templateId: selectedTemplateId,
       });
       
       toast({
@@ -188,209 +262,328 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
     return `${coverageLabel} – ${carrierName} – ${policy.policy_number}`;
   };
 
-  const selectedClient = clients?.find((c) => c.id === clientId);
+  const isValidForCompose = !!clientId && !!selectedPolicyId && !!selectedPolicy;
+  const isValidToSend = emailSubject.trim().length > 0 && emailBody.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Loss Run Request</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {currentStep === "details" ? (
+              <>
+                <FileText className="w-5 h-5" />
+                Create Loss Run Request
+              </>
+            ) : (
+              <>
+                <Mail className="w-5 h-5" />
+                Compose Email
+              </>
+            )}
+          </DialogTitle>
           <DialogDescription>
-            Select a policy to request loss run history. An email will be automatically sent to the carrier.
+            {currentStep === "details" 
+              ? "Select a policy to request loss run history." 
+              : "Review and customize the email before sending."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Client Selection - Read-only if pre-selected */}
-          <div className="space-y-2">
-            <Label htmlFor="client">Client *</Label>
-            {isClientScoped && selectedClient ? (
-              <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
-                <span className="font-medium">{selectedClient.name}</span>
-              </div>
-            ) : showNewClient ? (
-              <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
-                <Input
-                  placeholder="Client name"
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                />
-                <Input
-                  placeholder="Contact email (optional)"
-                  type="email"
-                  value={newClientEmail}
-                  onChange={(e) => setNewClientEmail(e.target.value)}
-                />
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 py-2">
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
+            currentStep === "details" 
+              ? "bg-primary text-primary-foreground" 
+              : "bg-muted text-muted-foreground"
+          }`}>
+            <span>1</span>
+            <span>Details</span>
+          </div>
+          <ArrowRight className="w-4 h-4 text-muted-foreground" />
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
+            currentStep === "compose" 
+              ? "bg-primary text-primary-foreground" 
+              : "bg-muted text-muted-foreground"
+          }`}>
+            <span>2</span>
+            <span>Compose Email</span>
+          </div>
+        </div>
+
+        {currentStep === "details" ? (
+          <div className="space-y-4 py-4">
+            {/* Client Selection - Read-only if pre-selected */}
+            <div className="space-y-2">
+              <Label htmlFor="client">Client *</Label>
+              {isClientScoped && selectedClient ? (
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+                  <span className="font-medium">{selectedClient.name}</span>
+                </div>
+              ) : showNewClient ? (
+                <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
+                  <Input
+                    placeholder="Client name"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Contact email (optional)"
+                    type="email"
+                    value={newClientEmail}
+                    onChange={(e) => setNewClientEmail(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleCreateClient}
+                      disabled={createClient.isPending}
+                    >
+                      {createClient.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Add Client
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowNewClient(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleCreateClient}
-                    disabled={createClient.isPending}
+                  <Select
+                    value={clientId}
+                    onValueChange={setClientId}
+                    disabled={clientsLoading}
                   >
-                    {createClient.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Add Client
-                  </Button>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder={clientsLoading ? "Loading..." : "Select client"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients?.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button
-                    size="sm"
+                    type="button"
                     variant="outline"
-                    onClick={() => setShowNewClient(false)}
+                    size="icon"
+                    onClick={() => setShowNewClient(true)}
                   >
-                    Cancel
+                    <Plus className="w-4 h-4" />
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="flex gap-2">
+              )}
+            </div>
+
+            {/* Policy Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="policy">Policy *</Label>
+              {!clientId ? (
+                <p className="text-sm text-muted-foreground italic">Select a client first</p>
+              ) : policiesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading policies...
+                </div>
+              ) : policies && policies.length > 0 ? (
                 <Select
-                  value={clientId}
-                  onValueChange={setClientId}
-                  disabled={clientsLoading}
+                  value={selectedPolicyId}
+                  onValueChange={setSelectedPolicyId}
                 >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder={clientsLoading ? "Loading..." : "Select client"} />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a policy" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients?.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
+                    {policies.map((policy) => (
+                      <SelectItem key={policy.id} value={policy.id}>
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span>{formatPolicyLabel(policy)}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowNewClient(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+              ) : (
+                <div className="p-3 border border-dashed rounded-lg bg-muted/30 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No policies found for this client.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add a policy to the client first.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Auto-filled fields - Read-only display */}
+            {selectedPolicy && (
+              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <FileText className="w-4 h-4" />
+                  Policy Details (Auto-filled)
+                </div>
+                
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Carrier</Label>
+                      <p className="font-medium">{selectedPolicy.carriers?.name || "Unknown"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Coverage Type</Label>
+                      <p className="font-medium">{coverageTypeLabels[selectedPolicy.coverage_type]}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Policy Number</Label>
+                      <p className="font-mono font-medium">{selectedPolicy.policy_number}</p>
+                    </div>
+                  </div>
+                  
+                  {selectedPolicy.carriers?.loss_run_email && (
+                    <p className="text-xs text-muted-foreground">
+                      Email will be sent to: {selectedPolicy.carriers.loss_run_email}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
-          </div>
 
-          {/* Policy Selection - Primary change */}
-          <div className="space-y-2">
-            <Label htmlFor="policy">Policy *</Label>
-            {!clientId ? (
-              <p className="text-sm text-muted-foreground italic">Select a client first</p>
-            ) : policiesLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading policies...
+            {/* Policy Dates */}
+            {selectedPolicy && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="policy_effective_date">Effective Date</Label>
+                  <Input
+                    id="policy_effective_date"
+                    type="date"
+                    value={policyEffectiveDate}
+                    onChange={(e) => setPolicyEffectiveDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="policy_expiration_date">Expiration Date</Label>
+                  <Input
+                    id="policy_expiration_date"
+                    type="date"
+                    value={policyExpirationDate}
+                    onChange={(e) => setPolicyExpirationDate(e.target.value)}
+                  />
+                </div>
               </div>
-            ) : policies && policies.length > 0 ? (
-              <Select
-                value={selectedPolicyId}
-                onValueChange={setSelectedPolicyId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a policy" />
+            )}
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Internal Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Additional information for internal tracking..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+        ) : (
+          // Compose Step
+          <div className="space-y-4 py-4">
+            {/* Template Selector */}
+            <div>
+              <Label htmlFor="template">Email Template</Label>
+              <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+                <SelectTrigger id="template" className="mt-1.5">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {policies.map((policy) => (
-                    <SelectItem key={policy.id} value={policy.id}>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span>{formatPolicyLabel(policy)}</span>
-                      </div>
+                  {emailTemplates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            ) : (
-              <div className="p-3 border border-dashed rounded-lg bg-muted/30 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No policies found for this client.
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Add a policy to the client first.
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Selecting a template will update the content below.
+              </p>
+            </div>
+
+            {/* Subject */}
+            <div>
+              <Label htmlFor="email-subject">Subject *</Label>
+              <Input
+                id="email-subject"
+                type="text"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Enter email subject..."
+                className="mt-1.5"
+              />
+            </div>
+
+            {/* Body */}
+            <div>
+              <Label htmlFor="email-body">Message *</Label>
+              <Textarea
+                id="email-body"
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                placeholder="Enter email message..."
+                className="mt-1.5 min-h-[200px] font-mono text-sm"
+              />
+            </div>
+
+            {/* Recipient info */}
+            {selectedPolicy?.carriers?.loss_run_email && (
+              <p className="text-xs text-muted-foreground">
+                This email will be sent to: <span className="font-medium">{selectedPolicy.carriers.loss_run_email}</span>
+              </p>
             )}
           </div>
+        )}
 
-          {/* Auto-filled fields - Read-only display */}
-          {selectedPolicy && (
-            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <FileText className="w-4 h-4" />
-                Policy Details (Auto-filled)
+        <div className="flex justify-between gap-2 pt-2 border-t">
+          {currentStep === "compose" ? (
+            <>
+              <Button variant="outline" onClick={() => setCurrentStep("details")}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmit} 
+                  disabled={createRequestWithTemplate.isPending || !isValidToSend}
+                >
+                  {createRequestWithTemplate.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Create & Send
+                </Button>
               </div>
-              
-              <div className="grid gap-3">
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Carrier</Label>
-                    <p className="font-medium">{selectedPolicy.carriers?.name || "Unknown"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Coverage Type</Label>
-                    <p className="font-medium">{coverageTypeLabels[selectedPolicy.coverage_type]}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Policy Number</Label>
-                    <p className="font-mono font-medium">{selectedPolicy.policy_number}</p>
-                  </div>
-                </div>
-                
-                {selectedPolicy.carriers?.loss_run_email && (
-                  <p className="text-xs text-muted-foreground">
-                    Email will be sent to: {selectedPolicy.carriers.loss_run_email}
-                  </p>
-                )}
+            </>
+          ) : (
+            <>
+              <div />
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleContinueToCompose} 
+                  disabled={!isValidForCompose}
+                >
+                  Continue to Email
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
               </div>
-            </div>
+            </>
           )}
-
-          {/* Policy Dates - Editable overrides */}
-          {selectedPolicy && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="policy_effective_date">Effective Date</Label>
-                <Input
-                  id="policy_effective_date"
-                  type="date"
-                  value={policyEffectiveDate}
-                  onChange={(e) => setPolicyEffectiveDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="policy_expiration_date">Expiration Date</Label>
-                <Input
-                  id="policy_expiration_date"
-                  type="date"
-                  value={policyExpirationDate}
-                  onChange={(e) => setPolicyExpirationDate(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Additional information for the request..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={createRequest.isPending || !selectedPolicy}
-          >
-            {createRequest.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Create & Send Request
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
