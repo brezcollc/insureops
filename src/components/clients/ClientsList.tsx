@@ -35,7 +35,7 @@ import { useClientsWithStats, useArchiveClient, useRestoreClient } from "@/hooks
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import type { ClientWithStats } from "@/hooks/useClients";
 
-type SortOption = "recent" | "alphabetical" | "pending";
+type SortOption = "recent" | "alphabetical" | "pending" | "client_code";
 
 // Compact progress indicator
 function ProgressIndicator({ reviewed, total }: { reviewed: number; total: number }) {
@@ -109,6 +109,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
       const query = searchQuery.toLowerCase();
       return (
         client.name.toLowerCase().includes(query) ||
+        client.client_code?.toLowerCase().includes(query) ||
         client.industry?.toLowerCase().includes(query) ||
         client.contact_email?.toLowerCase().includes(query)
       );
@@ -128,6 +129,16 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
         break;
       case "pending":
         result.sort((a, b) => b.open_request_count - a.open_request_count);
+        break;
+      case "client_code":
+        result.sort((a, b) => {
+          const aCode = a.client_code || "";
+          const bCode = b.client_code || "";
+          if (!aCode && !bCode) return a.name.localeCompare(b.name);
+          if (!aCode) return 1;
+          if (!bCode) return -1;
+          return aCode.localeCompare(bCode);
+        });
         break;
     }
 
@@ -169,7 +180,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, industry, or email..."
+            placeholder="Search by name, code, industry, or email..."
             className="pl-10 h-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -184,6 +195,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
             <SelectItem value="recent">Most Recent</SelectItem>
             <SelectItem value="alphabetical">A–Z</SelectItem>
             <SelectItem value="pending">Most Pending</SelectItem>
+            <SelectItem value="client_code">Client Code</SelectItem>
           </SelectContent>
         </Select>
 
@@ -218,6 +230,11 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-foreground truncate">{client.name}</p>
+                  {client.client_code && (
+                    <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
+                      {client.client_code}
+                    </span>
+                  )}
                   {client.status === "archived" && (
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
                       Archived

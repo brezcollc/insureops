@@ -27,6 +27,7 @@ export function ClientFormDialog({ open, onOpenChange, client }: ClientFormDialo
 
   const [formData, setFormData] = useState({
     name: "",
+    client_code: "",
     contact_email: "",
     contact_phone: "",
     address: "",
@@ -39,6 +40,7 @@ export function ClientFormDialog({ open, onOpenChange, client }: ClientFormDialo
     if (client) {
       setFormData({
         name: client.name || "",
+        client_code: client.client_code || "",
         contact_email: client.contact_email || "",
         contact_phone: client.contact_phone || "",
         address: client.address || "",
@@ -49,6 +51,7 @@ export function ClientFormDialog({ open, onOpenChange, client }: ClientFormDialo
     } else {
       setFormData({
         name: "",
+        client_code: "",
         contact_email: "",
         contact_phone: "",
         address: "",
@@ -66,6 +69,7 @@ export function ClientFormDialog({ open, onOpenChange, client }: ClientFormDialo
       await updateClient.mutateAsync({
         id: client.id,
         name: formData.name.trim(),
+        client_code: formData.client_code.trim() || undefined,
         contact_email: formData.contact_email.trim() || undefined,
         contact_phone: formData.contact_phone.trim() || undefined,
         address: formData.address.trim() || undefined,
@@ -76,6 +80,7 @@ export function ClientFormDialog({ open, onOpenChange, client }: ClientFormDialo
     } else {
       await createClient.mutateAsync({
         name: formData.name.trim(),
+        client_code: formData.client_code.trim() || undefined,
         contact_email: formData.contact_email.trim() || undefined,
         contact_phone: formData.contact_phone.trim() || undefined,
         address: formData.address.trim() || undefined,
@@ -103,14 +108,28 @@ export function ClientFormDialog({ open, onOpenChange, client }: ClientFormDialo
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Client Name *</Label>
-            <Input
-              id="name"
-              placeholder="e.g., Acme Corporation"
-              value={formData.name}
-              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Client Name *</Label>
+              <Input
+                id="name"
+                placeholder="e.g., Acme Corporation"
+                value={formData.name}
+                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client_code">Client Code</Label>
+              <Input
+                id="client_code"
+                placeholder="e.g., ACME-001"
+                value={formData.client_code}
+                onChange={(e) => setFormData((prev) => ({ ...prev, client_code: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional internal identifier
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
