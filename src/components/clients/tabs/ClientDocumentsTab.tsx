@@ -14,7 +14,7 @@ export function ClientDocumentsTab({ clientId }: ClientDocumentsTabProps) {
       <div>
         <h3 className="text-lg font-semibold">Documents</h3>
         <p className="text-sm text-muted-foreground">
-          Upload and manage loss run documents for this client
+          Upload and store loss run documents for review
         </p>
       </div>
 

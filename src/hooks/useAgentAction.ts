@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface AgentDecision {
-  action: "send_follow_up" | "parse_document" | "generate_summary" | "update_status" | "add_note" | "wait";
+  action: "send_follow_up" | "update_status" | "add_note" | "wait";
   reason: string;
 }
 

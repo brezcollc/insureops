@@ -11,7 +11,7 @@
    AlertDialogHeader,
    AlertDialogTitle,
  } from "@/components/ui/alert-dialog";
- import { Upload, FileText, Trash2, Download, Loader2, Zap, Lock } from "lucide-react";
+ import { Upload, FileText, Trash2, Download, Loader2, Lock } from "lucide-react";
  import { useRequestDocuments, useUploadDocument, useDeleteDocument, LossRunDocument } from "@/hooks/useDocumentUpload";
  import { supabase } from "@/integrations/supabase/client";
  
@@ -102,12 +102,12 @@
          <h4 className="font-medium flex items-center gap-2">
            <FileText className="w-4 h-4" />
            Documents
-           {!isReviewed && (
-             <Badge variant="outline" className="text-xs gap-1 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400">
-               <Zap className="w-3 h-3" />
-               Auto-processes
-             </Badge>
-           )}
+          {!isReviewed && (
+              <Badge variant="outline" className="text-xs gap-1 border-success/50 text-success">
+                <FileText className="w-3 h-3" />
+                For Review
+              </Badge>
+            )}
          </h4>
          <input
            ref={fileInputRef}
@@ -181,9 +181,9 @@
          <div className="text-center py-6 text-muted-foreground">
            <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
            <p className="text-sm">No documents uploaded yet</p>
-           {!isReviewed && (
-             <p className="text-xs mt-1">Upload a loss run PDF to auto-trigger processing</p>
-           )}
+            {!isReviewed && (
+              <p className="text-xs mt-1">Upload a loss run document for review</p>
+            )}
          </div>
        )}
  

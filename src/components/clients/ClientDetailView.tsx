@@ -8,7 +8,6 @@ import {
   FileText, 
   ClipboardList, 
   Upload,
-  CheckCircle,
   Loader2,
   Edit,
   Send
@@ -18,7 +17,6 @@ import { ClientOverviewTab } from "@/components/clients/tabs/ClientOverviewTab";
 import { ClientPoliciesTab } from "@/components/clients/tabs/ClientPoliciesTab";
 import { ClientLossRunsTab } from "@/components/clients/tabs/ClientLossRunsTab";
 import { ClientDocumentsTab } from "@/components/clients/tabs/ClientDocumentsTab";
-import { ClientReviewTab } from "@/components/clients/tabs/ClientReviewTab";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import { BatchLossRunDialog } from "@/components/clients/BatchLossRunDialog";
 
@@ -92,9 +90,9 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - Removed Review tab */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-5">
+        <TabsList className="grid w-full max-w-xl grid-cols-4">
           <TabsTrigger value="overview" className="gap-2">
             <Building2 className="w-4 h-4" />
             <span className="hidden sm:inline">Overview</span>
@@ -110,10 +108,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           <TabsTrigger value="documents" className="gap-2">
             <Upload className="w-4 h-4" />
             <span className="hidden sm:inline">Documents</span>
-          </TabsTrigger>
-          <TabsTrigger value="review" className="gap-2">
-            <CheckCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Review</span>
           </TabsTrigger>
         </TabsList>
 
@@ -131,10 +125,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
         <TabsContent value="documents">
           <ClientDocumentsTab clientId={clientId} />
-        </TabsContent>
-
-        <TabsContent value="review">
-          <ClientReviewTab clientId={clientId} />
         </TabsContent>
       </Tabs>
 

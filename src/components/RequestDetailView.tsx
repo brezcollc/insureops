@@ -289,7 +289,7 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
                     <div className="text-sm">
                       <p className="font-medium">Pending Review</p>
                       <p className="text-amber-600 dark:text-amber-500 mt-1">
-                        Review this loss run data before marking as complete. This action will lock the request from further automated processing.
+                        Review the loss run documents before marking as complete. This action will lock the request from further updates.
                       </p>
                     </div>
                   </div>
@@ -308,7 +308,7 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
                     Mark as Reviewed
                   </Button>
                   <p className="text-xs text-muted-foreground text-center">
-                    ⚠️ All outputs require review by a licensed insurance professional before use.
+                    ⚠️ All documents require review by a licensed insurance professional before use.
                   </p>
                 </div>
               )}
@@ -429,18 +429,18 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                You are confirming that you have reviewed the loss run data for this request.
+                You are confirming that you have reviewed the loss run documents for this request.
               </p>
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
                 <p className="font-medium text-amber-800 dark:text-amber-200">This action will:</p>
                 <ul className="list-disc list-inside mt-1 text-amber-700 dark:text-amber-300 space-y-1">
-                  <li>Lock the request from further agent actions</li>
-                  <li>Prevent automated status changes</li>
+                  <li>Lock the request from further changes</li>
+                  <li>Prevent status updates</li>
                   <li>Record the review timestamp and reviewer</li>
                 </ul>
               </div>
               <p className="text-xs text-muted-foreground">
-                This action cannot be undone. Ensure all data has been verified by a licensed professional.
+                This action cannot be undone. Ensure all documents have been reviewed by a licensed professional.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>

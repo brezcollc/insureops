@@ -3,93 +3,51 @@ import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-reac
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { parseLossRunDocument, LossRunData } from "@/lib/api/lossRunParser";
-import { ParsedLossRunView } from "@/components/ParsedLossRunView";
 
 interface UploadedDocument {
   id: string;
   name: string;
   type: string;
   size: string;
-  status: "processing" | "completed" | "error";
+  status: "uploading" | "completed" | "error";
   uploadedAt: string;
-  parsedData?: LossRunData;
   error?: string;
 }
 
 export function DocumentIntake() {
   const [isDragging, setIsDragging] = useState(false);
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<UploadedDocument | null>(null);
   const { toast } = useToast();
-
-  const extractTextFromFile = async (file: File): Promise<string> => {
-    // For now, we'll handle text-based files
-    // In production, you'd use a PDF parser library
-    if (file.type === "text/plain" || file.name.endsWith(".txt")) {
-      return await file.text();
-    }
-    
-    // For PDF files, we'll read as text (basic extraction)
-    // Note: Full PDF parsing would require a library like pdf-parse
-    const text = await file.text();
-    return text;
-  };
 
   const processFile = async (file: File) => {
     const docId = crypto.randomUUID();
     const newDoc: UploadedDocument = {
       id: docId,
       name: file.name,
-      type: "Loss Run Report",
+      type: "Loss Run Document",
       size: `${(file.size / 1024).toFixed(1)} KB`,
-      status: "processing",
+      status: "uploading",
       uploadedAt: "Just now",
     };
 
     setDocuments(prev => [newDoc, ...prev]);
 
-    try {
-      // Extract text from the file
-      const documentText = await extractTextFromFile(file);
-      
-      if (!documentText || documentText.length < 50) {
-        throw new Error("Could not extract sufficient text from the document. Please ensure it's a valid loss run document.");
-      }
+    // Simulate upload delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Parse with AI
-      const result = await parseLossRunDocument(documentText);
+    // Mark as completed - documents are stored for human review only
+    setDocuments(prev =>
+      prev.map(doc =>
+        doc.id === docId
+          ? { ...doc, status: "completed" }
+          : doc
+      )
+    );
 
-      if (result.success && result.data) {
-        setDocuments(prev =>
-          prev.map(doc =>
-            doc.id === docId
-              ? { ...doc, status: "completed", parsedData: result.data }
-              : doc
-          )
-        );
-        toast({
-          title: "Document Parsed Successfully",
-          description: `Extracted ${result.data.claims.length} claims from ${file.name}`,
-        });
-      } else {
-        throw new Error(result.error || "Failed to parse document");
-      }
-    } catch (error) {
-      console.error("Processing error:", error);
-      setDocuments(prev =>
-        prev.map(doc =>
-          doc.id === docId
-            ? { ...doc, status: "error", error: error instanceof Error ? error.message : "Unknown error" }
-            : doc
-        )
-      );
-      toast({
-        title: "Parsing Failed",
-        description: error instanceof Error ? error.message : "Failed to process document",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Document Uploaded",
+      description: `${file.name} is ready for review`,
+    });
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -105,23 +63,6 @@ export function DocumentIntake() {
     files.forEach(file => processFile(file));
     e.target.value = ""; // Reset input
   };
-
-  if (selectedDocument?.parsedData) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">{selectedDocument.name}</h3>
-            <p className="text-sm text-muted-foreground">Parsed loss run data</p>
-          </div>
-          <Button variant="outline" onClick={() => setSelectedDocument(null)}>
-            ← Back to Documents
-          </Button>
-        </div>
-        <ParsedLossRunView data={selectedDocument.parsedData} />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -143,7 +84,7 @@ export function DocumentIntake() {
           id="file-input"
           type="file"
           className="hidden"
-          accept=".pdf,.txt,.csv"
+          accept=".pdf,.txt,.csv,.png,.jpg,.jpeg"
           multiple
           onChange={handleFileSelect}
         />
@@ -155,7 +96,7 @@ export function DocumentIntake() {
             Upload Loss Run Documents
           </h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-md">
-            Drag and drop loss run PDFs here, or click to browse. The AI will extract claim data exactly as written.
+            Drag and drop loss run documents here, or click to browse. Documents will be stored for human review.
           </p>
           <Button>
             Browse Files
@@ -163,23 +104,19 @@ export function DocumentIntake() {
         </div>
       </div>
 
-      {/* Processed Documents */}
+      {/* Uploaded Documents */}
       {documents.length > 0 && (
         <div className="card-elevated overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
-            <h3 className="text-lg font-semibold text-foreground">Processed Documents</h3>
-            <p className="text-sm text-muted-foreground">Click on a completed document to view extracted data</p>
+            <h3 className="text-lg font-semibold text-foreground">Uploaded Documents</h3>
+            <p className="text-sm text-muted-foreground">Documents ready for review</p>
           </div>
 
           <div className="divide-y divide-border">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className={cn(
-                  "flex items-center gap-4 px-6 py-4 transition-colors",
-                  doc.status === "completed" && "cursor-pointer hover:bg-muted/50"
-                )}
-                onClick={() => doc.status === "completed" && setSelectedDocument(doc)}
+                className="flex items-center gap-4 px-6 py-4"
               >
                 <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
                   <FileText className="w-5 h-5 text-muted-foreground" />
@@ -188,7 +125,6 @@ export function DocumentIntake() {
                   <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {doc.type} • {doc.size}
-                    {doc.parsedData && ` • ${doc.parsedData.claims.length} claims extracted`}
                     {doc.error && ` • Error: ${doc.error}`}
                   </p>
                 </div>
@@ -197,7 +133,7 @@ export function DocumentIntake() {
                   {doc.status === "completed" && (
                     <CheckCircle className="w-5 h-5 text-success" />
                   )}
-                  {doc.status === "processing" && (
+                  {doc.status === "uploading" && (
                     <Loader2 className="w-5 h-5 text-primary animate-spin" />
                   )}
                   {doc.status === "error" && (
@@ -209,6 +145,14 @@ export function DocumentIntake() {
           </div>
         </div>
       )}
+
+      {/* Info Card */}
+      <div className="bg-muted/50 border border-border rounded-lg p-4">
+        <p className="text-sm text-muted-foreground">
+          <strong>Note:</strong> All documents are stored for review by licensed insurance professionals. 
+          Automated processing is not performed on document contents.
+        </p>
+      </div>
     </div>
   );
 }
