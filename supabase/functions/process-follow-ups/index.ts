@@ -88,7 +88,8 @@ const handler = async (req: Request): Promise<Response> => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
-      throw new Error("Supabase configuration is missing");
+      console.error("Supabase configuration is missing");
+      throw new Error("Service configuration error");
     }
 
     // Validate the user's token
@@ -131,7 +132,8 @@ const handler = async (req: Request): Promise<Response> => {
       .lte("request_date", sevenDaysAgo.toISOString());
 
     if (fetchError) {
-      throw new Error(`Failed to fetch pending requests: ${fetchError.message}`);
+      console.error("Failed to fetch pending requests:", fetchError);
+      throw new Error("Failed to process follow-ups");
     }
 
     console.log(`Found ${pendingRequests?.length || 0} requests needing follow-up`);
@@ -227,9 +229,9 @@ const handler = async (req: Request): Promise<Response> => {
     );
   } catch (error: unknown) {
     console.error("Error in process-follow-ups function:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    // Return generic error message - details are logged server-side
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "An error occurred processing your request" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

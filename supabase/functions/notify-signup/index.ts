@@ -21,7 +21,8 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured");
+      console.error("RESEND_API_KEY not configured");
+      throw new Error("Email service unavailable");
     }
 
     const data: SignupNotificationRequest = await req.json();
@@ -119,7 +120,7 @@ You can view all signups in your database under the interest_signups table.
     if (!emailResponse.ok) {
       const errorData = await emailResponse.json();
       console.error("Resend API error:", errorData);
-      throw new Error(`Resend API error: ${JSON.stringify(errorData)}`);
+      throw new Error("Failed to send notification. Please try again later.");
     }
 
     const emailResult = await emailResponse.json();
@@ -134,9 +135,9 @@ You can view all signups in your database under the interest_signups table.
     );
   } catch (error: unknown) {
     console.error("Error in notify-signup function:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    // Return generic error message - details are logged server-side
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "An error occurred processing your request" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

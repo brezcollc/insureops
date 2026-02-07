@@ -185,7 +185,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured");
+      console.error("RESEND_API_KEY not configured");
+      throw new Error("Email service unavailable");
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -193,7 +194,8 @@ const handler = async (req: Request): Promise<Response> => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
-      throw new Error("Supabase configuration is missing");
+      console.error("Supabase configuration is missing");
+      throw new Error("Service configuration error");
     }
 
     // Validate the user's token
@@ -250,7 +252,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!emailResponse.ok) {
       const errorData = await emailResponse.json();
-      throw new Error(`Resend API error: ${JSON.stringify(errorData)}`);
+      console.error("Resend API error:", errorData);
+      throw new Error("Failed to send email. Please try again later.");
     }
 
     const emailResult = await emailResponse.json();
@@ -295,9 +298,9 @@ const handler = async (req: Request): Promise<Response> => {
     );
   } catch (error: unknown) {
     console.error("Error in send-loss-run-email function:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    // Return generic error message - details are logged server-side
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "An error occurred processing your request" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
