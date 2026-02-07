@@ -171,6 +171,27 @@ export type Database = {
           },
         ]
       }
+      interest_signups: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
       loss_run_documents: {
         Row: {
           created_at: string
