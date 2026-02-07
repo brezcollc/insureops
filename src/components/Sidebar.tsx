@@ -1,10 +1,12 @@
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   LayoutDashboard, 
   Building2,
   Settings,
   HelpCircle,
-  Shield
+  Shield,
+  LogOut
 } from "lucide-react";
 
 interface SidebarProps {
@@ -23,6 +25,18 @@ const bottomNavigation = [
 ];
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+  const { user, signOut } = useAuth();
+  
+  const userInitials = user?.email 
+    ? user.email.substring(0, 2).toUpperCase() 
+    : "??";
+  
+  const userEmail = user?.email || "Unknown";
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-sidebar text-sidebar-foreground">
       {/* Logo / Brand */}
@@ -87,11 +101,17 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       <div className="px-4 py-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center">
-            <span className="text-sm font-medium text-sidebar-foreground">JD</span>
+            <span className="text-sm font-medium text-sidebar-foreground">{userInitials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">Jane Doe</p>
-            <p className="text-xs text-sidebar-muted truncate">Operations Manager</p>
+            <p className="text-sm font-medium text-sidebar-foreground truncate">{userEmail}</p>
+            <button 
+              onClick={handleSignOut}
+              className="flex items-center gap-1 text-xs text-sidebar-muted hover:text-sidebar-foreground transition-colors"
+            >
+              <LogOut className="w-3 h-3" />
+              Sign out
+            </button>
           </div>
         </div>
       </div>
