@@ -50,9 +50,12 @@ const LandingPage = () => {
     setIsSubmitting(true);
 
     try {
+      const trimmedEmail = email.trim().toLowerCase();
+      const timestamp = new Date().toISOString();
+      
       const { error } = await supabase
         .from("interest_signups")
-        .insert({ email: email.trim().toLowerCase() });
+        .insert({ email: trimmedEmail });
 
       if (error) {
         if (error.code === "23505") {
@@ -70,6 +73,13 @@ const LandingPage = () => {
         toast({
           title: "You're on the list!",
           description: "We'll reach out when access is available.",
+        });
+        
+        // Send admin notification (fire and forget - don't block user experience)
+        supabase.functions.invoke("notify-signup", {
+          body: { email: trimmedEmail, timestamp },
+        }).catch((err) => {
+          console.error("Failed to send admin notification:", err);
         });
       }
     } catch (error) {
