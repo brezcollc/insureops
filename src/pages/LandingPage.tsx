@@ -128,7 +128,7 @@ const LandingPage = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-primary/[0.02] to-accent/[0.02] rounded-full blur-[80px] -z-10" />
         
         <div className="max-w-4xl mx-auto text-center">
-          <div className="flex justify-center mb-12">
+          <div className="flex justify-center mb-6">
             <div className="relative">
               <img 
                 src={logo} 
