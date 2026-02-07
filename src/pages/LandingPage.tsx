@@ -114,7 +114,7 @@ const LandingPage = () => {
               <img 
                 src={logo} 
                 alt="InsureOps" 
-                className="h-36 md:h-44 lg:h-52 w-auto drop-shadow-xl mix-blend-multiply" 
+                className="h-48 md:h-56 lg:h-64 w-auto drop-shadow-xl mix-blend-multiply" 
               />
             </div>
           </div>
