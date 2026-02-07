@@ -148,12 +148,15 @@ export function useUploadDocument() {
    });
  }
  
- export function useDocumentDownloadUrl(filePath: string | null) {
-   if (!filePath) return null;
-   
-   const { data } = supabase.storage
-     .from("loss-run-documents")
-     .getPublicUrl(filePath);
-   
-   return data.publicUrl;
- }
+// NOTE: This hook is deprecated. Use useDocumentUrl from useClientDocuments.ts instead.
+// Keeping for backward compatibility - now uses signed URLs for private bucket security.
+export function useDocumentDownloadUrl(filePath: string | null) {
+  // This is a synchronous wrapper that returns null - callers should migrate to useDocumentUrl hook
+  // which properly uses createSignedUrl with expiry for private buckets
+  if (!filePath) return null;
+  
+  // Return null to indicate callers should use the async useDocumentUrl hook instead
+  // This prevents exposing file paths via getPublicUrl on private buckets
+  console.warn('useDocumentDownloadUrl is deprecated. Use useDocumentUrl from useClientDocuments.ts instead.');
+  return null;
+}

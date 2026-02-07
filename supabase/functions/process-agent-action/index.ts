@@ -262,8 +262,9 @@ What is the next best action for this request?`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
       return new Response(
-        JSON.stringify({ success: false, error: "AI service not configured" }),
+        JSON.stringify({ success: false, error: "AI service unavailable" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -293,8 +294,9 @@ What is the next best action for this request?`;
         );
       }
       if (response.status === 402) {
+        console.error("AI usage limit reached");
         return new Response(
-          JSON.stringify({ success: false, error: "AI usage limit reached." }),
+          JSON.stringify({ success: false, error: "Service temporarily unavailable. Please try again later." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -424,8 +426,9 @@ What is the next best action for this request?`;
     );
   } catch (error) {
     console.error("Agent error:", error);
+    // Return generic error message - details are logged server-side
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ success: false, error: "An error occurred processing your request" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
