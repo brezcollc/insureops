@@ -109,8 +109,12 @@ const LandingPage = () => {
         <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl -z-10" />
         
         <div className="max-w-4xl mx-auto text-center">
-          <div className="flex justify-center mb-8">
-            <img src={logo} alt="InsureOps" className="h-24 w-auto" />
+          <div className="flex justify-center mb-10">
+            <img 
+              src={logo} 
+              alt="InsureOps" 
+              className="h-36 md:h-44 lg:h-52 w-auto drop-shadow-xl" 
+            />
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground tracking-tight mb-6">
             Automate Loss Run Requests
