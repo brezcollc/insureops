@@ -117,7 +117,7 @@ const LandingPage = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-36 pb-28 px-6 relative overflow-hidden">
+      <section className="pt-28 pb-28 px-6 relative overflow-hidden">
         {/* Enhanced background treatment */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-background to-accent/[0.03] -z-10" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
