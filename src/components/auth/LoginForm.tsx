@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail, Lock, ArrowRight, ShieldCheck } from "lucide-react";
+import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 
@@ -45,58 +45,47 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
   };
 
   return (
-    <Card className="w-full border-border/30 shadow-lg shadow-primary/5 rounded-xl bg-card/95 backdrop-blur-sm">
-      <CardHeader className="text-center pb-2 pt-8">
-        <div className="flex justify-center mb-5">
-          <img src={logo} alt="InsureOps" className="h-14 w-auto" />
+    <Card className="w-full max-w-md border-border/40 shadow-xl">
+      <CardHeader className="text-center pb-2">
+        <div className="flex justify-center mb-4">
+          <img src={logo} alt="InsureOps" className="h-16 w-auto" />
         </div>
-        <CardTitle className="text-[1.65rem] font-bold tracking-tight">Welcome back</CardTitle>
-        <CardDescription className="text-muted-foreground mt-1">
-          Private access for insurance brokerages
-        </CardDescription>
-        <div className="mx-auto mt-4 w-10 h-[2px] rounded-full bg-primary/25" />
+        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+        <CardDescription>Sign in to your InsureOps account</CardDescription>
       </CardHeader>
-      <CardContent className="px-7 pb-7 pt-2">
+      <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Email
-            </Label>
+            <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
                 placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 h-11 rounded-lg border-border/50 bg-muted/30 transition-colors focus:bg-background"
+                className="pl-10"
                 disabled={isLoading}
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Password
-            </Label>
+            <Label htmlFor="password">Password</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 h-11 rounded-lg border-border/50 bg-muted/30 transition-colors focus:bg-background"
+                className="pl-10"
                 disabled={isLoading}
               />
             </div>
           </div>
-          <Button
-            type="submit"
-            className="w-full gap-2 h-11 rounded-lg mt-2 text-sm font-semibold transition-all duration-200 hover:shadow-md hover:shadow-primary/15"
-            disabled={isLoading}
-          >
+          <Button type="submit" className="w-full gap-2" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -110,18 +99,12 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             )}
           </Button>
         </form>
-
-        <div className="flex items-center gap-2 justify-center mt-5 text-muted-foreground/40">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span className="text-[0.68rem] tracking-wide uppercase">Encrypted & Secure</span>
-        </div>
-
-        <div className="mt-5 text-center text-sm text-muted-foreground">
+        <div className="mt-6 text-center text-sm text-muted-foreground">
           Don't have an account?{" "}
           <button
             type="button"
             onClick={onSwitchToSignup}
-            className="text-primary hover:underline font-medium transition-colors"
+            className="text-primary hover:underline font-medium"
           >
             Sign up
           </button>
