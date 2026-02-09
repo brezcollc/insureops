@@ -232,6 +232,7 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
         coverage_type: selectedPolicy.coverage_type,
         policy_effective_date: policyEffectiveDate || undefined,
         policy_expiration_date: policyExpirationDate || undefined,
+        carrier_email: selectedPolicy.carrier_email,
         notes: notes.trim() || undefined,
         customSubject: emailSubject,
         customBody: emailBody,
@@ -445,11 +446,9 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
                     </div>
                   </div>
                   
-                  {selectedPolicy.carriers?.loss_run_email && (
-                    <p className="text-xs text-muted-foreground">
-                      Email will be sent to: {selectedPolicy.carriers.loss_run_email}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Email will be sent to: {selectedPolicy.carrier_email}
+                  </p>
                 </div>
               </div>
             )}

@@ -11,6 +11,7 @@ export interface Policy {
   coverage_type: CoverageType;
   effective_date: string | null;
   expiration_date: string | null;
+  carrier_email: string;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -24,6 +25,7 @@ export interface CreatePolicyInput {
   coverage_type: CoverageType;
   effective_date?: string;
   expiration_date?: string;
+  carrier_email: string;
   notes?: string;
 }
 
@@ -68,6 +70,7 @@ export function useCreatePolicy() {
           coverage_type: input.coverage_type,
           effective_date: input.effective_date || null,
           expiration_date: input.expiration_date || null,
+          carrier_email: input.carrier_email,
           notes: input.notes || null,
         })
         .select(`

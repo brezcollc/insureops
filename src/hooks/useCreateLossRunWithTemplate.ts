@@ -10,6 +10,7 @@ interface CreateLossRunWithTemplateInput {
   coverage_type: CoverageType;
   policy_effective_date?: string;
   policy_expiration_date?: string;
+  carrier_email: string;
   notes?: string;
   customSubject: string;
   customBody: string;
@@ -32,6 +33,7 @@ export function useCreateLossRunWithTemplate() {
           coverage_type: input.coverage_type,
           policy_effective_date: input.policy_effective_date || null,
           policy_expiration_date: input.policy_expiration_date || null,
+          sent_to_email: input.carrier_email,
           notes: input.notes || null,
           status: "requested",
         })
@@ -60,7 +62,7 @@ export function useCreateLossRunWithTemplate() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            carrierEmail: typedRequest.carriers?.loss_run_email,
+            carrierEmail: input.carrier_email,
             insuredName: typedRequest.clients?.name || "Unknown Client",
             policyNumber: typedRequest.policy_number,
             policyPeriod,

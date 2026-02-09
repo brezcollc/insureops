@@ -52,6 +52,7 @@ export const PolicyFormDialog = forwardRef<HTMLDivElement, PolicyFormDialogProps
       coverage_type: "" as CoverageType | "",
       effective_date: "",
       expiration_date: "",
+      carrier_email: "",
       notes: "",
     });
 
@@ -63,6 +64,7 @@ export const PolicyFormDialog = forwardRef<HTMLDivElement, PolicyFormDialogProps
           coverage_type: policy.coverage_type,
           effective_date: policy.effective_date || "",
           expiration_date: policy.expiration_date || "",
+          carrier_email: policy.carrier_email || "",
           notes: policy.notes || "",
         });
       } else {
@@ -72,13 +74,14 @@ export const PolicyFormDialog = forwardRef<HTMLDivElement, PolicyFormDialogProps
           coverage_type: "",
           effective_date: "",
           expiration_date: "",
+          carrier_email: "",
           notes: "",
         });
       }
     }, [policy, open]);
 
     const handleSubmit = async () => {
-      if (!formData.carrier_id || !formData.policy_number || !formData.coverage_type) return;
+      if (!formData.carrier_id || !formData.policy_number || !formData.coverage_type || !formData.carrier_email.trim()) return;
 
       if (isEditing && policy) {
         await updatePolicy.mutateAsync({
@@ -88,6 +91,7 @@ export const PolicyFormDialog = forwardRef<HTMLDivElement, PolicyFormDialogProps
           coverage_type: formData.coverage_type as CoverageType,
           effective_date: formData.effective_date || undefined,
           expiration_date: formData.expiration_date || undefined,
+          carrier_email: formData.carrier_email.trim(),
           notes: formData.notes.trim() || undefined,
         });
       } else {
@@ -98,6 +102,7 @@ export const PolicyFormDialog = forwardRef<HTMLDivElement, PolicyFormDialogProps
           coverage_type: formData.coverage_type as CoverageType,
           effective_date: formData.effective_date || undefined,
           expiration_date: formData.expiration_date || undefined,
+          carrier_email: formData.carrier_email.trim(),
           notes: formData.notes.trim() || undefined,
         });
       }
@@ -106,7 +111,7 @@ export const PolicyFormDialog = forwardRef<HTMLDivElement, PolicyFormDialogProps
     };
 
     const isPending = createPolicy.isPending || updatePolicy.isPending;
-    const isValid = formData.carrier_id && formData.policy_number.trim() && formData.coverage_type;
+    const isValid = formData.carrier_id && formData.policy_number.trim() && formData.coverage_type && formData.carrier_email.trim();
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,6 +173,17 @@ export const PolicyFormDialog = forwardRef<HTMLDivElement, PolicyFormDialogProps
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="carrier_email">Carrier Email *</Label>
+              <Input
+                id="carrier_email"
+                type="email"
+                placeholder="e.g., lossruns@carrier.com"
+                value={formData.carrier_email}
+                onChange={(e) => setFormData((prev) => ({ ...prev, carrier_email: e.target.value }))}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
