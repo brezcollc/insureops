@@ -248,6 +248,7 @@ export type Database = {
           request_date: string
           reviewed_at: string | null
           reviewed_by: string | null
+          sent_to_email: string | null
           status: Database["public"]["Enums"]["loss_run_status"]
           updated_at: string
         }
@@ -265,6 +266,7 @@ export type Database = {
           request_date?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          sent_to_email?: string | null
           status?: Database["public"]["Enums"]["loss_run_status"]
           updated_at?: string
         }
@@ -282,6 +284,7 @@ export type Database = {
           request_date?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          sent_to_email?: string | null
           status?: Database["public"]["Enums"]["loss_run_status"]
           updated_at?: string
         }
@@ -304,6 +307,7 @@ export type Database = {
       }
       policies: {
         Row: {
+          carrier_email: string
           carrier_id: string
           client_id: string
           coverage_type: Database["public"]["Enums"]["coverage_type"]
@@ -317,6 +321,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          carrier_email: string
           carrier_id: string
           client_id: string
           coverage_type: Database["public"]["Enums"]["coverage_type"]
@@ -330,6 +335,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          carrier_email?: string
           carrier_id?: string
           client_id?: string
           coverage_type?: Database["public"]["Enums"]["coverage_type"]

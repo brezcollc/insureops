@@ -59,6 +59,7 @@ export function useBatchLossRunRequests() {
               coverage_type: policy.coverage_type,
               policy_effective_date: policy.effective_date || null,
               policy_expiration_date: policy.expiration_date || null,
+              sent_to_email: policy.carrier_email,
               status: "requested",
             })
             .select(`
@@ -79,7 +80,7 @@ export function useBatchLossRunRequests() {
               requestId: typedRequest.id,
               clientName: typedRequest.clients?.name || "Unknown Client",
               carrierName: typedRequest.carriers?.name || "Unknown Carrier",
-              carrierEmail: typedRequest.carriers?.loss_run_email,
+              carrierEmail: policy.carrier_email,
               policyNumber: typedRequest.policy_number,
               coverageType: typedRequest.coverage_type,
               policyEffectiveDate: typedRequest.policy_effective_date,
