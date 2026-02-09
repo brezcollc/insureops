@@ -46,27 +46,35 @@ export function useCreateLossRunWithTemplate() {
 
       const typedRequest = request as LossRunRequest;
 
-      // Send the email with custom template content
-      const { error: emailError } = await supabase.functions.invoke("send-loss-run-email", {
-        body: {
-          requestId: typedRequest.id,
-          clientName: typedRequest.clients?.name || "Unknown Client",
-          carrierName: typedRequest.carriers?.name || "Unknown Carrier",
-          carrierEmail: typedRequest.carriers?.loss_run_email,
-          policyNumber: typedRequest.policy_number,
-          coverageType: typedRequest.coverage_type,
-          policyEffectiveDate: typedRequest.policy_effective_date,
-          policyExpirationDate: typedRequest.policy_expiration_date,
-          isFollowUp: input.templateId === "follow_up",
-          customSubject: input.customSubject,
-          customBody: input.customBody,
-          templateId: input.templateId,
-        },
-      });
+      // Send email via external resend-email endpoint
+      const policyPeriod = [
+        typedRequest.policy_effective_date,
+        typedRequest.policy_expiration_date,
+      ]
+        .filter(Boolean)
+        .join(" to ") || "N/A";
 
-      if (emailError) {
-        console.error("Email send error:", emailError);
-        // Don't throw - request was created, just email failed
+      const response = await fetch(
+        "https://wtgihcskwpneynwbwcyj.supabase.co/functions/v1/resend-email",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            carrierEmail: typedRequest.carriers?.loss_run_email,
+            insuredName: typedRequest.clients?.name || "Unknown Client",
+            policyNumber: typedRequest.policy_number,
+            policyPeriod,
+            lineOfBusiness: typedRequest.coverage_type,
+            yearsRequested: 5,
+            brokerName: "Insurance Operations Team",
+            agencyName: "Acme Insurance Group",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error("Email send error:", errBody);
         toast({
           title: "Request Created",
           description: "Request created but email send failed. You may need to resend.",
