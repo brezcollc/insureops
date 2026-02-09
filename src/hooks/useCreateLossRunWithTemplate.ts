@@ -80,6 +80,11 @@ export function useCreateLossRunWithTemplate() {
           description: "Request created but email send failed. You may need to resend.",
           variant: "destructive",
         });
+      } else {
+        toast({
+          title: "Email Sent",
+          description: "Loss run request email sent.",
+        });
       }
 
       return typedRequest;
