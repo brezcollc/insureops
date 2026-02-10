@@ -48,32 +48,38 @@ export function useCreateLossRunWithTemplate() {
 
       const typedRequest = request as LossRunRequest;
 
-      // Send email via send-loss-run-email edge function
-      const { error: emailError } = await supabase.functions.invoke("send-loss-run-email", {
-        body: {
-          requestId: typedRequest.id,
-          clientName: typedRequest.clients?.name || "Unknown Client",
-          carrierName: typedRequest.carriers?.name || "Unknown Carrier",
+      // Build policy period string
+      const policyPeriod = typedRequest.policy_effective_date && typedRequest.policy_expiration_date
+        ? `${typedRequest.policy_effective_date} to ${typedRequest.policy_expiration_date}`
+        : "";
+
+      // Send email via external clever-worker endpoint
+      const emailResponse = await fetch("https://wtgihcskwpneynwbwcyj.supabase.co/functions/v1/clever-worker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           carrierEmail: input.carrier_email,
+          insuredName: typedRequest.clients?.name || "Unknown Client",
           policyNumber: typedRequest.policy_number,
-          coverageType: typedRequest.coverage_type,
-          policyEffectiveDate: typedRequest.policy_effective_date,
-          policyExpirationDate: typedRequest.policy_expiration_date,
-          isFollowUp: false,
-          customSubject: input.customSubject,
-          customBody: input.customBody,
-          templateId: input.templateId,
-        },
+          policyPeriod,
+          lineOfBusiness: typedRequest.coverage_type,
+        }),
       });
 
-      if (emailError) {
-        console.error("Email send error:", emailError);
+      if (!emailResponse.ok) {
+        console.error("Email send error:", await emailResponse.text());
         toast({
           title: "Request Created",
           description: "Request created but email send failed. You may need to resend.",
           variant: "destructive",
         });
       } else {
+        // Save the carrierEmail used on the loss run request record
+        await supabase
+          .from("loss_run_requests")
+          .update({ sent_to_email: input.carrier_email })
+          .eq("id", typedRequest.id);
+
         toast({
           title: "Email Sent",
           description: "Loss run request email sent.",
