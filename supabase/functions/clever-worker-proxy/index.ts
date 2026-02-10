@@ -13,12 +13,16 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+    const authHeader = req.headers.get("Authorization");
 
     const response = await fetch(
       "https://wtgihcskwpneynwbwcyj.supabase.co/functions/v1/clever-worker",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { "Authorization": authHeader } : {}),
+        },
         body: JSON.stringify(body),
       }
     );
