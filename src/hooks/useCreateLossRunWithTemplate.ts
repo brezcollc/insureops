@@ -53,21 +53,21 @@ export function useCreateLossRunWithTemplate() {
         ? `${typedRequest.policy_effective_date} to ${typedRequest.policy_expiration_date}`
         : "";
 
-      // Send email via external clever-worker endpoint
-      const emailResponse = await fetch("https://wtgihcskwpneynwbwcyj.supabase.co/functions/v1/clever-worker", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // Send email via proxy edge function to avoid CORS
+      const { data: emailData, error: emailFetchError } = await supabase.functions.invoke("clever-worker-proxy", {
+        body: {
           carrierEmail: input.carrier_email,
           insuredName: typedRequest.clients?.name || "Unknown Client",
           policyNumber: typedRequest.policy_number,
           policyPeriod,
           lineOfBusiness: typedRequest.coverage_type,
-        }),
+        },
       });
 
+      const emailResponse = { ok: !emailFetchError };
+
       if (!emailResponse.ok) {
-        console.error("Email send error:", await emailResponse.text());
+        console.error("Email send error:", emailFetchError);
         toast({
           title: "Request Created",
           description: "Request created but email send failed. You may need to resend.",
