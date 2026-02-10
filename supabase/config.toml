@@ -13,3 +13,6 @@ verify_jwt = false
 
 [functions.notify-signup]
 verify_jwt = false
+
+[functions.clever-worker-proxy]
+verify_jwt = false
