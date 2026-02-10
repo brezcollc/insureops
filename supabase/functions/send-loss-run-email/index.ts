@@ -216,11 +216,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate email content
     const { subject, body, html } = generateEmailContent(data);
 
-    // Use test recipient when using Resend sandbox (unverified domain)
-    // Production: verify your domain at resend.com/domains and update the from address
-    const isTestMode = true; // Set to false after verifying domain
-    const testRecipient = "brezcollc@gmail.com";
-    const recipient = isTestMode ? testRecipient : data.carrierEmail;
+    // Always send to the carrier email from the selected policy
+    const recipient = data.carrierEmail;
 
     // Send the email using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -238,7 +235,7 @@ const handler = async (req: Request): Promise<Response> => {
       }),
     });
 
-    console.log(`Email sent to ${recipient} (test mode: ${isTestMode}, original: ${data.carrierEmail})`);
+    console.log(`Email sent to ${recipient}`);
 
     if (!emailResponse.ok) {
       const errorData = await emailResponse.json();

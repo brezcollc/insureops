@@ -194,6 +194,15 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
       return;
     }
 
+    if (!selectedPolicy.carrier_email?.trim()) {
+      toast({
+        title: "Missing Carrier Email",
+        description: "Please add a carrier email to this policy before requesting loss runs.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Initialize email content from template
     const template = emailTemplates.find((t) => t.id === selectedTemplateId) || emailTemplates[0];
     const applied = applyTemplate(template, templateVariables);
@@ -220,6 +229,15 @@ export function NewRequestForm({ open, onOpenChange, onSuccess, preselectedClien
         title: "Validation Error", 
         description: "Please fill in all required fields", 
         variant: "destructive" 
+      });
+      return;
+    }
+
+    if (!selectedPolicy.carrier_email?.trim()) {
+      toast({
+        title: "Missing Carrier Email",
+        description: "Please add a carrier email to this policy before requesting loss runs.",
+        variant: "destructive",
       });
       return;
     }
