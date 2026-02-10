@@ -13,12 +13,16 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+    const anonKey = Deno.env.get("CLEVER_WORKER_ANON_KEY");
 
     const response = await fetch(
       "https://wtgihcskwpneynwbwcyj.supabase.co/functions/v1/clever-worker",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(anonKey ? { "Authorization": `Bearer ${anonKey}` } : {}),
+        },
         body: JSON.stringify(body),
       }
     );
