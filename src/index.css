@@ -2,7 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Landing page dark theme overrides */
+.landing-dark {
+  --landing-bg: 215 50% 8%;
+  --landing-bg-elevated: 215 45% 11%;
+  --landing-bg-card: 215 40% 14%;
+  --landing-fg: 210 20% 95%;
+  --landing-fg-muted: 210 15% 60%;
+  --landing-border: 215 30% 20%;
+  --landing-accent-blue: 205 80% 55%;
+  --landing-accent-teal: 180 50% 45%;
+  --landing-gradient-start: 215 50% 8%;
+  --landing-gradient-end: 210 45% 12%;
+}
 
 /* Insurance Operations Tool Design System
    Professional, trustworthy, enterprise-grade
