@@ -68,13 +68,18 @@ export function ClientLossRunsTab({ clientId, clientName }: ClientLossRunsTabPro
         </Badge>
       </TableCell>
       <TableCell>
-        {new Date(request.request_date).toLocaleDateString()}
+        <div>
+          <span>{new Date(request.request_date).toLocaleDateString()}</span>
+          <span className="block text-xs text-muted-foreground mt-0.5">
+            {new Date(request.request_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <StatusBadge status={request.status} />
           {isReviewed && (
-            <Badge variant="secondary" className="gap-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            <Badge variant="secondary" className="gap-1 text-xs bg-status-completed-bg text-status-completed">
               <Lock className="w-3 h-3" />
               Reviewed
             </Badge>
@@ -103,7 +108,7 @@ export function ClientLossRunsTab({ clientId, clientName }: ClientLossRunsTabPro
               <span className="flex items-center gap-2 text-xs">
                 <span className="tabular-nums">{reviewedCount}/{totalRequests} reviewed</span>
                 {reviewedCount === totalRequests && totalRequests > 0 && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-status-completed" />
                 )}
               </span>
             ) : (
@@ -127,7 +132,7 @@ export function ClientLossRunsTab({ clientId, clientName }: ClientLossRunsTabPro
       {openRequests.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <span className="w-2 h-2 rounded-full bg-status-pending" />
             In Progress ({openRequests.length})
           </h4>
           <div className="card-elevated overflow-hidden">
@@ -154,10 +159,10 @@ export function ClientLossRunsTab({ clientId, clientName }: ClientLossRunsTabPro
       {reviewedRequests.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <CheckCircle2 className="w-4 h-4 text-status-completed" />
             Reviewed ({reviewedRequests.length})
           </h4>
-          <div className="card-elevated overflow-hidden border-green-200/50 dark:border-green-900/30">
+          <div className="card-elevated overflow-hidden border-status-completed/20">
             <Table>
               <TableHeader>
                 <TableRow>

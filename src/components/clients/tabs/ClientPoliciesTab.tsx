@@ -25,9 +25,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, MoreHorizontal, FileText, Loader2, Trash2, Edit } from "lucide-react";
+import { Plus, MoreHorizontal, FileText, Loader2, Trash2, Edit, Mail } from "lucide-react";
 import { usePoliciesByClient, useDeletePolicy } from "@/hooks/usePolicies";
 import { PolicyFormDialog } from "@/components/clients/PolicyFormDialog";
+import { useLossRunsByClient } from "@/hooks/useClientLossRuns";
 import type { Policy } from "@/hooks/usePolicies";
 
 interface ClientPoliciesTabProps {
@@ -46,6 +47,7 @@ const coverageTypeLabels: Record<string, string> = {
 
 export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
   const { data: policies, isLoading } = usePoliciesByClient(clientId);
+  const { data: lossRunRequests } = useLossRunsByClient(clientId);
   const deletePolicy = useDeletePolicy();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
@@ -55,6 +57,23 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
     if (!deletingPolicy) return;
     await deletePolicy.mutateAsync({ id: deletingPolicy.id, clientId });
     setDeletingPolicy(null);
+  };
+
+  // Build a map of policy_number -> latest request date
+  const lastRequestedMap = new Map<string, string>();
+  (lossRunRequests || []).forEach((req) => {
+    const existing = lastRequestedMap.get(req.policy_number);
+    if (!existing || new Date(req.request_date) > new Date(existing)) {
+      lastRequestedMap.set(req.policy_number, req.request_date);
+    }
+  });
+
+  const formatShortDate = (date: string) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   if (isLoading) {
@@ -87,60 +106,81 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
               <TableHead>Policy Number</TableHead>
               <TableHead>Carrier</TableHead>
               <TableHead>Coverage Type</TableHead>
+              <TableHead>Carrier Email</TableHead>
               <TableHead>Effective Date</TableHead>
               <TableHead>Expiration Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(policies || []).map((policy) => (
-              <TableRow key={policy.id}>
-                <TableCell className="font-mono font-medium max-w-[150px] truncate">
-                  {policy.policy_number}
-                </TableCell>
-                <TableCell className="max-w-[120px] truncate">{policy.carriers?.name || "Unknown"}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">
-                    {coverageTypeLabels[policy.coverage_type] || policy.coverage_type}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {policy.effective_date
-                    ? new Date(policy.effective_date).toLocaleDateString()
-                    : "—"}
-                </TableCell>
-                <TableCell>
-                  {policy.expiration_date
-                    ? new Date(policy.expiration_date).toLocaleDateString()
-                    : "—"}
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditingPolicy(policy)}>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Policy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => setDeletingPolicy(policy)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+            {(policies || []).map((policy) => {
+              const lastRequested = lastRequestedMap.get(policy.policy_number);
+              return (
+                <TableRow key={policy.id}>
+                  <TableCell>
+                    <div>
+                      <span className="font-mono font-medium">{policy.policy_number}</span>
+                      {lastRequested && (
+                        <span className="block text-xs text-muted-foreground mt-0.5">
+                          Last requested: {formatShortDate(lastRequested)}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-[120px] truncate">{policy.carriers?.name || "Unknown"}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {coverageTypeLabels[policy.coverage_type] || policy.coverage_type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {policy.carrier_email ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-muted border border-border/60 text-muted-foreground max-w-[200px] truncate">
+                        <Mail className="w-3 h-3 shrink-0" />
+                        {policy.carrier_email}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60 italic">Not set</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {policy.effective_date
+                      ? new Date(policy.effective_date).toLocaleDateString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {policy.expiration_date
+                      ? new Date(policy.expiration_date).toLocaleDateString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingPolicy(policy)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Policy
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => setDeletingPolicy(policy)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {(!policies || policies.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12">
+                <TableCell colSpan={7} className="text-center py-12">
                   <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
                   <p className="text-muted-foreground font-medium mb-1">No policies yet</p>
                   <p className="text-sm text-muted-foreground">

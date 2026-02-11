@@ -236,12 +236,16 @@ export function LossRunTable({ searchQuery = "" }: LossRunTableProps) {
                   <td>{request.carriers?.name || "Unknown"}</td>
                   <td className="font-mono text-sm">{request.policy_number}</td>
                   <td>{coverageTypeLabels[request.coverage_type] || request.coverage_type}</td>
-                  <td>{new Date(request.request_date).toLocaleDateString()}</td>
+                  <td>
+                    <div>
+                      <span>{new Date(request.request_date).toLocaleDateString()}</span>
+                    </div>
+                  </td>
                   <td>
                     <div className="flex items-center gap-2">
                       <StatusBadge status={request.status} />
                       {request.reviewed_at && (
-                        <Badge variant="secondary" className="gap-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <Badge variant="secondary" className="gap-1 text-xs bg-status-completed-bg text-status-completed">
                           <Lock className="w-3 h-3" />
                           Reviewed
                         </Badge>
@@ -251,7 +255,7 @@ export function LossRunTable({ searchQuery = "" }: LossRunTableProps) {
                           <TooltipTrigger asChild>
                             <Badge 
                               variant="outline" 
-                              className="gap-1 text-xs border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400 cursor-help"
+                              className="gap-1 text-xs border-primary/30 text-primary cursor-help"
                             >
                               {latestActions[request.id].trigger_type === "document_upload" ? (
                                 <Zap className="w-3 h-3" />
