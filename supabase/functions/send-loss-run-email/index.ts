@@ -216,10 +216,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate email content
     const { subject, body, html } = generateEmailContent(data);
 
-    // Resend sandbox mode: unverified domains can only send to the account owner's email.
-    // Set RESEND_VERIFIED_DOMAIN=true as a secret once you verify a domain at resend.com/domains.
-    const hasVerifiedDomain = Deno.env.get("RESEND_VERIFIED_DOMAIN") === "true";
-    const recipient = hasVerifiedDomain ? data.carrierEmail : "brezcollc@gmail.com";
+    // Domain insureopsio.com is verified on Resend – send directly to the carrier.
+    const recipient = data.carrierEmail;
 
     // Send the email using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
