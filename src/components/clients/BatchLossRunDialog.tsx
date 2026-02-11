@@ -10,9 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileText, AlertCircle, Send } from "lucide-react";
+import { Loader2, FileText, AlertCircle, Send, CheckCircle2, Mail } from "lucide-react";
 import { usePoliciesByClient, Policy } from "@/hooks/usePolicies";
-import { useBatchLossRunRequests } from "@/hooks/useBatchLossRunRequests";
+import { useBatchLossRunRequests, BatchLossRunResult } from "@/hooks/useBatchLossRunRequests";
 import { useLossRunsByClient } from "@/hooks/useClientLossRuns";
 import type { CoverageType } from "@/hooks/useLossRunRequests";
 
@@ -47,6 +47,8 @@ export function BatchLossRunDialog({
 
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<Set<string>>(new Set());
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [sendResult, setSendResult] = useState<BatchLossRunResult | null>(null);
+  const [sentTimestamp, setSentTimestamp] = useState<string | null>(null);
 
   // Find policies with existing open requests
   const policiesWithOpenRequests = useMemo(() => {
@@ -58,18 +60,29 @@ export function BatchLossRunDialog({
     );
   }, [existingRequests]);
 
-  // Initialize selection when dialog opens (select all available policies)
+  // Policies missing carrier email
+  const policiesMissingEmail = useMemo(() => {
+    if (!policies) return new Set<string>();
+    return new Set(
+      policies.filter((p) => !p.carrier_email || !p.carrier_email.trim()).map((p) => p.id)
+    );
+  }, [policies]);
+
+  // Initialize selection when dialog opens
   useMemo(() => {
     if (open && policies) {
       const availablePolicies = policies.filter(
-        (p) => !policiesWithOpenRequests.has(p.policy_number)
+        (p) => !policiesWithOpenRequests.has(p.policy_number) && !policiesMissingEmail.has(p.id)
       );
       setSelectedPolicyIds(new Set(availablePolicies.map((p) => p.id)));
       setShowConfirmation(false);
+      setSendResult(null);
+      setSentTimestamp(null);
     }
-  }, [open, policies, policiesWithOpenRequests]);
+  }, [open, policies, policiesWithOpenRequests, policiesMissingEmail]);
 
   const togglePolicy = (policyId: string) => {
+    if (policiesMissingEmail.has(policyId)) return;
     setSelectedPolicyIds((prev) => {
       const next = new Set(prev);
       if (next.has(policyId)) {
@@ -84,7 +97,7 @@ export function BatchLossRunDialog({
   const toggleAll = () => {
     if (!policies) return;
     const availablePolicies = policies.filter(
-      (p) => !policiesWithOpenRequests.has(p.policy_number)
+      (p) => !policiesWithOpenRequests.has(p.policy_number) && !policiesMissingEmail.has(p.id)
     );
     if (selectedPolicyIds.size === availablePolicies.length) {
       setSelectedPolicyIds(new Set());
@@ -106,19 +119,30 @@ export function BatchLossRunDialog({
       return;
     }
 
-    await batchCreate.mutateAsync({
+    const result = await batchCreate.mutateAsync({
       clientId,
       policies: selectedPolicies,
     });
 
-    onOpenChange(false);
-    onSuccess?.();
+    setSendResult(result);
+    setSentTimestamp(new Date().toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }));
   };
 
   const handleClose = () => {
     if (!batchCreate.isPending) {
       setShowConfirmation(false);
+      setSendResult(null);
+      setSentTimestamp(null);
       onOpenChange(false);
+      if (sendResult && sendResult.created.length > 0) {
+        onSuccess?.();
+      }
     }
   };
 
@@ -132,12 +156,67 @@ export function BatchLossRunDialog({
   };
 
   const availablePolicies = policies?.filter(
-    (p) => !policiesWithOpenRequests.has(p.policy_number)
+    (p) => !policiesWithOpenRequests.has(p.policy_number) && !policiesMissingEmail.has(p.id)
+  );
+
+  const missingEmailPolicies = policies?.filter(
+    (p) => policiesMissingEmail.has(p.id) && !policiesWithOpenRequests.has(p.policy_number)
   );
 
   const unavailablePolicies = policies?.filter((p) =>
     policiesWithOpenRequests.has(p.policy_number)
   );
+
+  // Post-send success view
+  if (sendResult) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-lg">
+          <div className="py-8 text-center">
+            <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-5">
+              <CheckCircle2 className="w-7 h-7 text-success" />
+            </div>
+            <h3 className="text-xl font-semibold text-foreground mb-1">
+              Loss run request{sendResult.created.length > 1 ? "s" : ""} sent
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              {sentTimestamp && `Requested on ${sentTimestamp}`}
+            </p>
+
+            <div className="space-y-2 max-h-48 overflow-y-auto text-left">
+              {sendResult.created.map((req) => (
+                <div
+                  key={req.id}
+                  className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg text-sm"
+                >
+                  <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-foreground truncate block">
+                      {coverageTypeLabels[req.coverage_type]} — {req.policy_number}
+                    </span>
+                    <span className="text-muted-foreground text-xs truncate block">
+                      Sent to {req.carriers?.loss_run_email || "carrier"}
+                    </span>
+                  </div>
+                  <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                </div>
+              ))}
+              {sendResult.emailErrors.length > 0 && (
+                <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-lg text-sm">
+                  <span className="text-destructive font-medium">
+                    {sendResult.emailErrors.length} email{sendResult.emailErrors.length > 1 ? "s" : ""} failed to send
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleClose} className="w-full">Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -186,10 +265,15 @@ export function BatchLossRunDialog({
                   key={policy.id}
                   className="flex items-center justify-between p-2 bg-muted/50 rounded text-sm"
                 >
-                  <span className="font-medium">
-                    {coverageTypeLabels[policy.coverage_type]} — {policy.carriers?.name}
-                  </span>
-                  <span className="font-mono text-muted-foreground">{policy.policy_number}</span>
+                  <div className="min-w-0">
+                    <span className="font-medium">
+                      {coverageTypeLabels[policy.coverage_type]} — {policy.carriers?.name}
+                    </span>
+                    <span className="block text-xs text-muted-foreground truncate">
+                      → {policy.carrier_email}
+                    </span>
+                  </div>
+                  <span className="font-mono text-muted-foreground shrink-0 ml-2">{policy.policy_number}</span>
                 </div>
               ))}
             </div>
@@ -201,7 +285,7 @@ export function BatchLossRunDialog({
               <div className="flex items-center gap-3 pb-3 border-b">
                 <Checkbox
                   id="select-all"
-                  checked={selectedPolicyIds.size === availablePolicies.length}
+                  checked={selectedPolicyIds.size === availablePolicies.length && availablePolicies.length > 0}
                   onCheckedChange={toggleAll}
                 />
                 <label
@@ -225,6 +309,26 @@ export function BatchLossRunDialog({
                   formatDate={formatDate}
                 />
               ))}
+
+              {/* Policies missing carrier email */}
+              {missingEmailPolicies && missingEmailPolicies.length > 0 && (
+                <div className="pt-4 mt-4 border-t">
+                  <div className="flex items-center gap-2 text-sm text-warning mb-2">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>Missing carrier email ({missingEmailPolicies.length})</span>
+                  </div>
+                  {missingEmailPolicies.map((policy) => (
+                    <PolicyRow
+                      key={policy.id}
+                      policy={policy}
+                      selected={false}
+                      disabled
+                      missingEmail
+                      formatDate={formatDate}
+                    />
+                  ))}
+                </div>
+              )}
 
               {/* Unavailable policies section */}
               {unavailablePolicies && unavailablePolicies.length > 0 && (
@@ -268,7 +372,7 @@ export function BatchLossRunDialog({
             {batchCreate.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating Requests...
+                Sending…
               </>
             ) : showConfirmation ? (
               <>
@@ -289,11 +393,12 @@ interface PolicyRowProps {
   policy: Policy;
   selected: boolean;
   disabled?: boolean;
+  missingEmail?: boolean;
   onToggle?: () => void;
   formatDate: (date: string | null) => string;
 }
 
-function PolicyRow({ policy, selected, disabled, onToggle, formatDate }: PolicyRowProps) {
+function PolicyRow({ policy, selected, disabled, missingEmail, onToggle, formatDate }: PolicyRowProps) {
   return (
     <div
       className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
@@ -325,8 +430,13 @@ function PolicyRow({ policy, selected, disabled, onToggle, formatDate }: PolicyR
             {formatDate(policy.effective_date)} – {formatDate(policy.expiration_date)}
           </span>
         </div>
+        {missingEmail && (
+          <p className="text-xs text-warning mt-1.5">
+            Add a carrier email to this policy to request loss runs.
+          </p>
+        )}
       </div>
-      {disabled && (
+      {disabled && !missingEmail && (
         <Badge variant="outline" className="shrink-0 text-xs">
           Open Request
         </Badge>

@@ -45,19 +45,24 @@ const generateEmailContent = (data: LossRunEmailRequest): { subject: string; bod
     const subject = data.customSubject;
     const body = data.customBody;
     
-    // Convert plain text body to HTML
+    // Convert plain text body to HTML with professional formatting
     const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background: #f9fafb; }
+    .wrapper { max-width: 600px; margin: 0 auto; padding: 32px 24px; }
+    .content { background: #ffffff; border-radius: 6px; padding: 32px; border: 1px solid #e5e7eb; }
+    .footer { text-align: center; padding-top: 24px; font-size: 11px; color: #9ca3af; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${body}</pre>
+  <div class="wrapper">
+    <div class="content">
+      <pre style="font-family: Arial, sans-serif; white-space: pre-wrap; margin: 0; font-size: 14px; line-height: 1.7;">${body}</pre>
+    </div>
+    <div class="footer">Sent via InsureOps</div>
   </div>
 </body>
 </html>
@@ -73,93 +78,77 @@ const generateEmailContent = (data: LossRunEmailRequest): { subject: string; bod
   const agencyName = data.agencyName || "Acme Insurance Group";
 
   const subject = isFollowUp
-    ? `FOLLOW-UP: Loss Run Request - ${data.clientName} - Policy ${data.policyNumber}`
-    : `Loss Run Request - ${data.clientName} - Policy ${data.policyNumber}`;
+    ? `Follow-Up: Loss Run Request – ${data.clientName} (${coverageTypeFormatted})`
+    : `Loss Run Request – ${data.clientName} (${coverageTypeFormatted})`;
 
   const policyPeriod = data.policyEffectiveDate && data.policyExpirationDate
-    ? `Policy Period: ${data.policyEffectiveDate} to ${data.policyExpirationDate}`
-    : "Policy Period: Please provide all available loss history";
+    ? `${data.policyEffectiveDate} to ${data.policyExpirationDate}`
+    : "All available history";
 
   const followUpNote = isFollowUp
-    ? `<p style="color: #dc2626; font-weight: bold;">This is a follow-up to our previous request. We kindly ask for your prompt attention to this matter.</p>`
+    ? `\n\nThis is a follow-up to our previous request. We would appreciate your prompt attention.\n`
     : "";
 
-  const body = `
-${isFollowUp ? "FOLLOW-UP REQUEST\n\n" : ""}Dear Loss Runs Department,
+  const body = `Dear Loss Runs Department,${followUpNote}
 
-We are writing to request loss run information for the following insured:
+We are requesting loss run reports for the following insured:
 
-Insured Name: ${data.clientName}
+Insured: ${data.clientName}
 Policy Number: ${data.policyNumber}
-Coverage Type: ${coverageTypeFormatted}
-${policyPeriod}
+Line of Business: ${coverageTypeFormatted}
+Policy Period: ${policyPeriod}
 
-Please provide loss runs covering the most recent 5 years of coverage history, including:
-- All open and closed claims
-- Claim numbers, dates of loss, and descriptions
-- Paid, reserved, and incurred amounts
-- Current claim status
+Please provide the most recent five years of loss history, including all open and closed claims with dates of loss, descriptions, paid and reserved amounts, and current status.
 
-If you have any questions or need additional information to process this request, please do not hesitate to contact us.
+If any additional information is needed to fulfill this request, please let us know.
 
-Thank you for your prompt attention to this request.
-
-Best regards,
+Thank you,
 ${senderName}
-${agencyName}
-  `.trim();
+${agencyName}`.trim();
 
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { border-bottom: 2px solid #2563eb; padding-bottom: 15px; margin-bottom: 20px; }
-    .info-box { background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; }
-    .info-row { margin: 8px 0; }
-    .label { font-weight: bold; color: #475569; }
-    .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background: #f9fafb; }
+    .wrapper { max-width: 600px; margin: 0 auto; padding: 32px 24px; }
+    .content { background: #ffffff; border-radius: 6px; padding: 32px; border: 1px solid #e5e7eb; }
+    .details { background: #f8fafc; border-left: 3px solid #2563eb; padding: 16px; margin: 20px 0; border-radius: 0 4px 4px 0; }
+    .detail-row { margin: 6px 0; font-size: 14px; }
+    .detail-label { font-weight: 600; color: #374151; }
+    .sig { margin-top: 28px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 14px; }
+    .sig-name { font-weight: 600; color: #111827; }
+    .sig-agency { color: #6b7280; }
+    .footer { text-align: center; padding-top: 24px; font-size: 11px; color: #9ca3af; }
   </style>
 </head>
 <body>
-  <div class="container">
-    ${followUpNote}
-    <div class="header">
-      <h2 style="margin: 0; color: #1e40af;">Loss Run Request</h2>
+  <div class="wrapper">
+    <div class="content">
+      ${isFollowUp ? '<p style="color: #b91c1c; font-weight: 600; margin-top: 0;">Follow-up — previous request pending</p>' : ''}
+      <p style="margin-top: 0;">Dear Loss Runs Department,</p>
+      
+      <p>We are requesting loss run reports for the following insured:</p>
+      
+      <div class="details">
+        <div class="detail-row"><span class="detail-label">Insured:</span> ${data.clientName}</div>
+        <div class="detail-row"><span class="detail-label">Policy Number:</span> ${data.policyNumber}</div>
+        <div class="detail-row"><span class="detail-label">Line of Business:</span> ${coverageTypeFormatted}</div>
+        <div class="detail-row"><span class="detail-label">Policy Period:</span> ${policyPeriod}</div>
+      </div>
+      
+      <p>Please provide the most recent five years of loss history, including all open and closed claims with dates of loss, descriptions, paid and reserved amounts, and current status.</p>
+      
+      <p>If any additional information is needed to fulfill this request, please let us know.</p>
+      
+      <div class="sig">
+        <p style="margin: 0;">Thank you,</p>
+        <p class="sig-name" style="margin: 4px 0 0;">${senderName}</p>
+        <p class="sig-agency" style="margin: 2px 0 0;">${agencyName}</p>
+      </div>
     </div>
-    
-    <p>Dear Loss Runs Department,</p>
-    
-    <p>We are writing to request loss run information for the following insured:</p>
-    
-    <div class="info-box">
-      <div class="info-row"><span class="label">Insured Name:</span> ${data.clientName}</div>
-      <div class="info-row"><span class="label">Policy Number:</span> ${data.policyNumber}</div>
-      <div class="info-row"><span class="label">Coverage Type:</span> ${coverageTypeFormatted}</div>
-      <div class="info-row"><span class="label">${policyPeriod}</span></div>
-    </div>
-    
-    <p>Please provide loss runs covering the most recent 5 years of coverage history, including:</p>
-    <ul>
-      <li>All open and closed claims</li>
-      <li>Claim numbers, dates of loss, and descriptions</li>
-      <li>Paid, reserved, and incurred amounts</li>
-      <li>Current claim status</li>
-    </ul>
-    
-    <p>If you have any questions or need additional information to process this request, please do not hesitate to contact us.</p>
-    
-    <p>Thank you for your prompt attention to this request.</p>
-    
-    <div class="footer">
-      <p>
-        Best regards,<br>
-        <strong>${senderName}</strong><br>
-        ${agencyName}
-      </p>
-    </div>
+    <div class="footer">Sent via InsureOps</div>
   </div>
 </body>
 </html>
