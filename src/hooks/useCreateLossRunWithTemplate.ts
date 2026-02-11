@@ -53,14 +53,20 @@ export function useCreateLossRunWithTemplate() {
         ? `${typedRequest.policy_effective_date} to ${typedRequest.policy_expiration_date}`
         : "";
 
-      // Send email via proxy edge function to avoid CORS
-      const { data: emailData, error: emailFetchError } = await supabase.functions.invoke("clever-worker-proxy", {
+      // Send email via send-loss-run-email edge function
+      const { data: emailData, error: emailFetchError } = await supabase.functions.invoke("send-loss-run-email", {
         body: {
+          requestId: typedRequest.id,
+          clientName: typedRequest.clients?.name || "Unknown Client",
+          carrierName: typedRequest.carriers?.name || "Unknown Carrier",
           carrierEmail: input.carrier_email,
-          insuredName: typedRequest.clients?.name || "Unknown Client",
           policyNumber: typedRequest.policy_number,
-          policyPeriod,
-          lineOfBusiness: typedRequest.coverage_type,
+          coverageType: typedRequest.coverage_type,
+          policyEffectiveDate: typedRequest.policy_effective_date,
+          policyExpirationDate: typedRequest.policy_expiration_date,
+          customSubject: input.customSubject,
+          customBody: input.customBody,
+          templateId: input.templateId,
         },
       });
 
