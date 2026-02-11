@@ -229,7 +229,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Loss Run Requests <onboarding@resend.dev>",
+        from: "Loss Run Requests <noreply@insureopsio.com>",
         to: [recipient],
         subject: subject,
         html: html,
