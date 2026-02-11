@@ -9,60 +9,48 @@ export const emailTemplates: EmailTemplate[] = [
   {
     id: "initial_request",
     name: "Initial Loss Run Request",
-    subject: "Loss Run Request - {{client_name}} - Policy {{policy_number}}",
+    subject: "Loss Run Request – {{client_name}} ({{coverage_type}})",
     body: `Dear Loss Runs Department,
 
-We are writing to request loss run information for the following insured:
+We are requesting loss run reports for the following insured:
 
-Insured Name: {{client_name}}
+Insured: {{client_name}}
 Policy Number: {{policy_number}}
-Coverage Type: {{coverage_type}}
+Line of Business: {{coverage_type}}
 Policy Period: {{policy_period}}
 
-Please provide loss runs covering the most recent 5 years of coverage history, including:
-- All open and closed claims
-- Claim numbers, dates of loss, and descriptions
-- Paid, reserved, and incurred amounts
-- Current claim status
+Please provide the most recent five years of loss history, including all open and closed claims with dates of loss, descriptions, paid and reserved amounts, and current status.
 
-If you have any questions or need additional information to process this request, please do not hesitate to contact us.
+If any additional information is needed to fulfill this request, please let us know.
 
-Thank you for your prompt attention to this request.
-
-Best regards,
+Thank you,
 {{sender_name}}
-{{agency_name}}`,
+{{agency_name}}
+
+Sent via InsureOps`,
   },
   {
     id: "follow_up",
     name: "Follow-Up Loss Run Request",
-    subject: "FOLLOW-UP: Loss Run Request - {{client_name}} - Policy {{policy_number}}",
+    subject: "Follow-Up: Loss Run Request – {{client_name}} ({{coverage_type}})",
     body: `Dear Loss Runs Department,
 
-FOLLOW-UP REQUEST
+This is a follow-up to our previous loss run request for the insured listed below. We would appreciate your prompt attention.
 
-This is a follow-up to our previous loss run request. We kindly ask for your prompt attention to this matter.
-
-Insured Name: {{client_name}}
+Insured: {{client_name}}
 Policy Number: {{policy_number}}
-Coverage Type: {{coverage_type}}
+Line of Business: {{coverage_type}}
 Policy Period: {{policy_period}}
 
-We are still awaiting the loss run information for the above-referenced policy. Your timely response is greatly appreciated as we are working on a renewal timeline.
+We are still awaiting the loss run reports for the above policy. Please provide the most recent five years of loss history at your earliest convenience.
 
-Please provide loss runs covering the most recent 5 years of coverage history, including:
-- All open and closed claims
-- Claim numbers, dates of loss, and descriptions
-- Paid, reserved, and incurred amounts
-- Current claim status
+If there is anything else needed to process this request, please let us know immediately.
 
-If there is any information needed to complete this request, please let us know immediately.
-
-Thank you for your assistance.
-
-Best regards,
+Thank you for your assistance,
 {{sender_name}}
-{{agency_name}}`,
+{{agency_name}}
+
+Sent via InsureOps`,
   },
 ];
 
