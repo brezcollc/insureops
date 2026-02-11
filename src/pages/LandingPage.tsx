@@ -14,7 +14,9 @@ import {
   Mail,
   Loader2,
   FileText,
-  BarChart3
+  BarChart3,
+  Shield,
+  Zap
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
@@ -36,7 +38,6 @@ const LandingPage = () => {
       return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       toast({
@@ -59,7 +60,6 @@ const LandingPage = () => {
 
       if (error) {
         if (error.code === "23505") {
-          // Duplicate email
           toast({
             title: "Already registered",
             description: "This email is already on our early access list.",
@@ -75,7 +75,6 @@ const LandingPage = () => {
           description: "We'll reach out when access is available.",
         });
         
-        // Send admin notification (fire and forget - don't block user experience)
         supabase.functions.invoke("notify-signup", {
           body: { email: trimmedEmail, timestamp },
         }).catch((err) => {
@@ -99,17 +98,26 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="landing-dark min-h-screen" style={{ background: 'hsl(215 50% 8%)' }}>
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/40">
-        <div className="max-w-6xl mx-auto px-6 h-18 py-3 flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b" style={{ 
+        background: 'hsla(215, 50%, 8%, 0.92)', 
+        backdropFilter: 'blur(16px)',
+        borderColor: 'hsl(215 30% 18%)'
+      }}>
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="InsureOps Logo" className="h-11 w-auto" />
+            <img src={logo} alt="InsureOps Logo" className="h-10 w-auto" />
           </div>
           <Button 
             onClick={scrollToSignup} 
             size="sm" 
-            className="bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 transition-all duration-200 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5"
+            className="text-sm font-medium px-5 h-9 rounded-lg transition-all duration-200 hover:-translate-y-0.5"
+            style={{ 
+              background: 'hsl(205 80% 55%)', 
+              color: 'white',
+              boxShadow: '0 2px 12px hsla(205, 80%, 55%, 0.25)'
+            }}
           >
             Request Access
           </Button>
@@ -117,40 +125,49 @@ const LandingPage = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-28 pb-28 px-6 relative overflow-hidden">
-        {/* Enhanced background treatment */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-background to-accent/[0.03] -z-10" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
-        
-        {/* Gradient orbs for visual interest */}
-        <div className="absolute top-32 left-[15%] w-[500px] h-[500px] bg-primary/[0.07] rounded-full blur-[100px] -z-10" />
-        <div className="absolute bottom-0 right-[10%] w-[400px] h-[400px] bg-accent/[0.07] rounded-full blur-[100px] -z-10" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-primary/[0.02] to-accent/[0.02] rounded-full blur-[80px] -z-10" />
+      <section className="pt-32 pb-28 px-6 relative overflow-hidden">
+        {/* Subtle grid pattern overlay */}
+        <div className="absolute inset-0 -z-10" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, hsla(210, 20%, 30%, 0.15) 1px, transparent 0)`,
+          backgroundSize: '48px 48px'
+        }} />
+        {/* Soft glow */}
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full -z-10" style={{
+          background: 'radial-gradient(ellipse, hsla(205, 80%, 55%, 0.08) 0%, transparent 70%)'
+        }} />
         
         <div className="max-w-4xl mx-auto text-center">
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <img 
-                src={logo} 
-                alt="InsureOps" 
-                className="h-48 md:h-56 lg:h-64 w-auto drop-shadow-2xl mix-blend-multiply" 
-              />
-            </div>
+          <div className="flex justify-center mb-8">
+            <img 
+              src={logo} 
+              alt="InsureOps" 
+              className="h-40 md:h-48 lg:h-56 w-auto" 
+              style={{ filter: 'drop-shadow(0 4px 24px hsla(205, 80%, 55%, 0.15))' }}
+            />
           </div>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground tracking-tight mb-7 leading-[1.1]">
-            Automate Loss Run Requests
-            <span className="block mt-2 bg-gradient-to-r from-primary via-primary/90 to-accent bg-clip-text text-transparent">
-              Without the Chase
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.08]" style={{ color: 'hsl(210 20% 95%)' }}>
+            Automate Loss Run
+            <span className="block mt-1" style={{ 
+              background: 'linear-gradient(135deg, hsl(205 80% 60%), hsl(180 50% 50%))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              Operations
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
-            A simple operations platform for insurance brokerages to request, track, and manage loss runs.
+          <p className="text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed" style={{ color: 'hsl(210 15% 58%)' }}>
+            A purpose-built platform for insurance brokerages to request, track, and manage loss runs — without the manual chase.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
               onClick={scrollToSignup} 
-              className="gap-2 bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 transition-all duration-200 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-0.5 h-13 px-8 text-base font-medium"
+              className="gap-2 h-13 px-8 text-base font-semibold rounded-xl transition-all duration-200 hover:-translate-y-0.5"
+              style={{ 
+                background: 'hsl(205 80% 55%)', 
+                color: 'white',
+                boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.3)'
+              }}
             >
               Request Early Access
               <ArrowRight className="w-4 h-4" />
@@ -159,7 +176,12 @@ const LandingPage = () => {
               size="lg" 
               variant="outline" 
               onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} 
-              className="border-border/60 hover:bg-muted/50 hover:border-border transition-all duration-200 h-13 px-8 text-base font-medium"
+              className="h-13 px-8 text-base font-medium rounded-xl transition-all duration-200"
+              style={{ 
+                borderColor: 'hsl(215 30% 25%)',
+                color: 'hsl(210 15% 65%)',
+                background: 'transparent'
+              }}
             >
               Learn More
             </Button>
@@ -167,181 +189,173 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Divider */}
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="h-px" style={{ background: 'linear-gradient(to right, transparent, hsl(215 30% 20%), transparent)' }} />
+      </div>
+
       {/* Value Proposition */}
       <section className="py-24 px-6 relative">
-        {/* Subtle section background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-muted/40 via-muted/20 to-transparent -z-10" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/30 to-transparent" />
-        
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5 tracking-tight">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'hsl(210 20% 93%)' }}>
               Everything you need to manage loss runs
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: 'hsl(210 15% 55%)' }}>
               Streamline your operations with tools designed specifically for insurance brokerages.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="group border-border/40 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-primary/[0.08] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/20 rounded-2xl overflow-hidden">
-              <CardContent className="pt-7 pb-6 px-6">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300">
-                  <Send className="w-7 h-7 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2.5 text-lg">Request in Bulk</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Send loss run requests across multiple carriers with a few clicks.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="group border-border/40 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-accent/[0.08] transition-all duration-300 hover:-translate-y-1.5 hover:border-accent/20 rounded-2xl overflow-hidden">
-              <CardContent className="pt-7 pb-6 px-6">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent/15 to-accent/5 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300">
-                  <BarChart3 className="w-7 h-7 text-accent" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2.5 text-lg">Track Everything</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Monitor responses, documents, and follow-ups in one central place.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="group border-border/40 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-primary/[0.08] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/20 rounded-2xl overflow-hidden">
-              <CardContent className="pt-7 pb-6 px-6">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-accent/5 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300">
-                  <FileText className="w-7 h-7 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2.5 text-lg">Stay Organized</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Keep your book of business organized as it grows.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="group border-border/40 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-success/[0.08] transition-all duration-300 hover:-translate-y-1.5 hover:border-success/20 rounded-2xl overflow-hidden">
-              <CardContent className="pt-7 pb-6 px-6">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-success/15 to-success/5 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300">
-                  <CheckCircle className="w-7 h-7 text-success" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2.5 text-lg">Built for Brokerages</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Designed around real brokerage workflows, not generic tools.
-                </p>
-              </CardContent>
-            </Card>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              { icon: Send, title: "Request in Bulk", desc: "Send loss run requests across multiple carriers with a few clicks.", accent: '205 80% 55%' },
+              { icon: BarChart3, title: "Track Everything", desc: "Monitor responses, documents, and follow-ups in one central place.", accent: '180 50% 45%' },
+              { icon: FileText, title: "Stay Organized", desc: "Keep your book of business organized as it grows.", accent: '205 80% 55%' },
+              { icon: Shield, title: "Built for Brokerages", desc: "Designed around real brokerage workflows, not generic tools.", accent: '152 55% 42%' },
+            ].map((item, i) => (
+              <Card key={i} className="group border rounded-2xl transition-all duration-300 hover:-translate-y-1" style={{ 
+                background: 'hsl(215 40% 12%)',
+                borderColor: 'hsl(215 30% 18%)',
+              }}>
+                <CardContent className="pt-7 pb-6 px-6">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-105" style={{
+                    background: `hsla(${item.accent}, 0.1)`,
+                  }}>
+                    <item.icon className="w-6 h-6" style={{ color: `hsl(${item.accent})` }} />
+                  </div>
+                  <h3 className="font-semibold mb-2 text-base" style={{ color: 'hsl(210 20% 90%)' }}>{item.title}</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: 'hsl(210 15% 52%)' }}>
+                    {item.desc}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* Divider */}
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="h-px" style={{ background: 'linear-gradient(to right, transparent, hsl(215 30% 20%), transparent)' }} />
+      </div>
 
       {/* How It Works */}
       <section id="how-it-works" className="py-24 px-6 relative">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/30 to-transparent" />
-        
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5 tracking-tight">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'hsl(210 20% 93%)' }}>
               How It Works
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-lg" style={{ color: 'hsl(210 15% 55%)' }}>
               Get started in three simple steps
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
-            <div className="group text-center relative bg-card/40 backdrop-blur-sm rounded-2xl p-8 border border-border/30 hover:border-primary/20 hover:bg-card/60 transition-all duration-300 hover:shadow-lg">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform duration-300">
-                1
+          <div className="grid md:grid-cols-3 gap-8 lg:gap-10">
+            {[
+              { num: "1", title: "Add Clients & Policies", desc: "Set up your client database with their policy information and carrier details.", accent: '205 80% 55%' },
+              { num: "2", title: "Send Requests", desc: "Request loss runs and send follow-ups with templated emails.", accent: '195 65% 50%' },
+              { num: "3", title: "Track & Complete", desc: "Upload documents, mark requests complete, and stay organized.", accent: '180 50% 45%' },
+            ].map((step, i) => (
+              <div key={i} className="group text-center relative rounded-2xl p-8 border transition-all duration-300 hover:-translate-y-1" style={{
+                background: 'hsl(215 40% 11%)',
+                borderColor: 'hsl(215 30% 18%)',
+              }}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-6 transition-transform duration-300 group-hover:scale-105" style={{
+                  background: `linear-gradient(135deg, hsl(${step.accent}), hsl(${step.accent} / 0.7))`,
+                  color: 'white',
+                  boxShadow: `0 4px 16px hsl(${step.accent} / 0.25)`
+                }}>
+                  {step.num}
+                </div>
+                <h3 className="font-semibold mb-3 text-lg" style={{ color: 'hsl(210 20% 90%)' }}>{step.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: 'hsl(210 15% 52%)' }}>
+                  {step.desc}
+                </p>
+                {/* Connector line */}
+                {i < 2 && (
+                  <div className="hidden md:block absolute top-11 left-[65%] w-[70%] h-px" style={{
+                    background: `linear-gradient(to right, hsl(${step.accent} / 0.3), transparent)`
+                  }} />
+                )}
               </div>
-              <h3 className="font-semibold text-foreground mb-3 text-lg">Add Clients & Policies</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Set up your client database with their policy information and carrier details.
-              </p>
-              {/* Connector line */}
-              <div className="hidden md:block absolute top-12 left-[65%] w-[70%] h-0.5 bg-gradient-to-r from-primary/40 via-primary/20 to-transparent" />
-            </div>
-            <div className="group text-center relative bg-card/40 backdrop-blur-sm rounded-2xl p-8 border border-border/30 hover:border-accent/20 hover:bg-card/60 transition-all duration-300 hover:shadow-lg">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/90 to-accent text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-accent/30 group-hover:scale-105 transition-transform duration-300">
-                2
-              </div>
-              <h3 className="font-semibold text-foreground mb-3 text-lg">Send Requests</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Request loss runs and send follow-ups with templated emails.
-              </p>
-              {/* Connector line */}
-              <div className="hidden md:block absolute top-12 left-[65%] w-[70%] h-0.5 bg-gradient-to-r from-accent/40 via-accent/20 to-transparent" />
-            </div>
-            <div className="group text-center bg-card/40 backdrop-blur-sm rounded-2xl p-8 border border-border/30 hover:border-success/20 hover:bg-card/60 transition-all duration-300 hover:shadow-lg">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-success text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-success/30 group-hover:scale-105 transition-transform duration-300">
-                3
-              </div>
-              <h3 className="font-semibold text-foreground mb-3 text-lg">Track & Complete</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Upload documents, mark requests complete, and stay organized.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* Divider */}
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="h-px" style={{ background: 'linear-gradient(to right, transparent, hsl(215 30% 20%), transparent)' }} />
+      </div>
 
       {/* Who It's For */}
       <section className="py-24 px-6 relative">
-        {/* Subtle section background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-muted/30 via-muted/15 to-transparent -z-10" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/30 to-transparent" />
-        
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5 tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'hsl(210 20% 93%)' }}>
             Built for Insurance Operations
           </h2>
-          <p className="text-lg text-muted-foreground mb-12">
+          <p className="text-lg mb-12" style={{ color: 'hsl(210 15% 55%)' }}>
             InsureOps is designed for teams who manage loss run workflows daily.
           </p>
           <div className="flex flex-wrap justify-center gap-5">
-            <div className="group flex items-center gap-4 bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl px-7 py-5 shadow-sm hover:shadow-lg hover:border-primary/20 transition-all duration-300 hover:-translate-y-0.5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                <Building2 className="w-6 h-6 text-primary" />
+            {[
+              { icon: Building2, label: "Independent Brokerages", accent: '205 80% 55%' },
+              { icon: Users, label: "Account Managers", accent: '180 50% 45%' },
+              { icon: Clock, label: "Renewal Teams", accent: '152 55% 42%' },
+            ].map((item, i) => (
+              <div key={i} className="group flex items-center gap-4 rounded-2xl px-7 py-5 border transition-all duration-300 hover:-translate-y-0.5" style={{
+                background: 'hsl(215 40% 12%)',
+                borderColor: 'hsl(215 30% 18%)',
+              }}>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105" style={{
+                  background: `hsla(${item.accent}, 0.1)`,
+                }}>
+                  <item.icon className="w-5 h-5" style={{ color: `hsl(${item.accent})` }} />
+                </div>
+                <span className="font-medium text-base" style={{ color: 'hsl(210 20% 88%)' }}>{item.label}</span>
               </div>
-              <span className="text-foreground font-medium text-base">Independent Brokerages</span>
-            </div>
-            <div className="group flex items-center gap-4 bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl px-7 py-5 shadow-sm hover:shadow-lg hover:border-accent/20 transition-all duration-300 hover:-translate-y-0.5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent/15 to-accent/5 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                <Users className="w-6 h-6 text-accent" />
-              </div>
-              <span className="text-foreground font-medium text-base">Account Managers</span>
-            </div>
-            <div className="group flex items-center gap-4 bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl px-7 py-5 shadow-sm hover:shadow-lg hover:border-success/20 transition-all duration-300 hover:-translate-y-0.5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-success/15 to-success/5 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                <Clock className="w-6 h-6 text-success" />
-              </div>
-              <span className="text-foreground font-medium text-base">Renewal Teams</span>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
+      {/* Divider */}
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="h-px" style={{ background: 'linear-gradient(to right, transparent, hsl(215 30% 20%), transparent)' }} />
+      </div>
+
       {/* Email Signup */}
       <section id="signup" className="py-28 px-6 relative overflow-hidden">
-        {/* Enhanced background decoration */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-accent/[0.04] -z-10" />
-        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-primary/[0.05] rounded-full blur-[100px] -z-10" />
-        <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] bg-accent/[0.05] rounded-full blur-[80px] -z-10" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border/30 to-transparent" />
+        {/* Soft glow behind form */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full -z-10" style={{
+          background: 'radial-gradient(ellipse, hsla(205, 80%, 55%, 0.06) 0%, transparent 70%)'
+        }} />
         
         <div className="max-w-xl mx-auto text-center">
-          <div className="w-18 h-18 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/15 to-accent/20 flex items-center justify-center mx-auto mb-8 shadow-lg shadow-primary/10">
-            <Mail className="w-9 h-9 text-primary" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-8" style={{
+            background: 'hsla(205, 80%, 55%, 0.1)',
+            boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.08)'
+          }}>
+            <Mail className="w-8 h-8" style={{ color: 'hsl(205 80% 55%)' }} />
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5 tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'hsl(210 20% 93%)' }}>
             Get Early Access
           </h2>
-          <p className="text-lg text-muted-foreground mb-10">
+          <p className="text-lg mb-10" style={{ color: 'hsl(210 15% 55%)' }}>
             Join the waitlist and we'll reach out when access is available.
           </p>
           
           {isSubmitted ? (
-            <div className="bg-success/10 border border-success/20 rounded-2xl p-10 shadow-lg">
-              <div className="w-14 h-14 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-5">
-                <CheckCircle className="w-7 h-7 text-success" />
+            <div className="rounded-2xl p-10 border" style={{
+              background: 'hsla(152, 55%, 42%, 0.08)',
+              borderColor: 'hsla(152, 55%, 42%, 0.2)',
+            }}>
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{
+                background: 'hsla(152, 55%, 42%, 0.15)',
+              }}>
+                <CheckCircle className="w-7 h-7" style={{ color: 'hsl(152 55% 45%)' }} />
               </div>
-              <p className="text-foreground font-semibold text-xl">You're on the list!</p>
-              <p className="text-muted-foreground mt-2">
+              <p className="font-semibold text-xl" style={{ color: 'hsl(210 20% 93%)' }}>You're on the list!</p>
+              <p className="mt-2" style={{ color: 'hsl(210 15% 55%)' }}>
                 We'll reach out when access is available.
               </p>
             </div>
@@ -352,14 +366,24 @@ const LandingPage = () => {
                 placeholder="Enter your work email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 h-13 bg-card/80 backdrop-blur-sm border-border/50 rounded-xl text-base focus:border-primary/50 focus:ring-primary/20 transition-all duration-200"
+                className="flex-1 h-13 rounded-xl text-base transition-all duration-200"
+                style={{
+                  background: 'hsl(215 40% 12%)',
+                  borderColor: 'hsl(215 30% 22%)',
+                  color: 'hsl(210 20% 90%)',
+                }}
                 disabled={isSubmitting}
               />
               <Button 
                 type="submit" 
                 size="lg" 
                 disabled={isSubmitting} 
-                className="gap-2 bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 transition-all duration-200 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-0.5 h-13 px-8 rounded-xl text-base font-medium"
+                className="gap-2 h-13 px-8 rounded-xl text-base font-semibold transition-all duration-200 hover:-translate-y-0.5"
+                style={{ 
+                  background: 'hsl(205 80% 55%)', 
+                  color: 'white',
+                  boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.3)'
+                }}
               >
                 {isSubmitting ? (
                   <>
@@ -372,36 +396,37 @@ const LandingPage = () => {
               </Button>
             </form>
           )}
-          <p className="text-sm text-muted-foreground/80 mt-6">
+          <p className="text-sm mt-6" style={{ color: 'hsl(210 15% 40%)' }}>
             We respect your privacy. No spam, ever.
           </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-14 px-6 border-t border-border/30 bg-muted/20">
+      <footer className="py-14 px-6 border-t" style={{ borderColor: 'hsl(215 30% 15%)', background: 'hsl(215 50% 6%)' }}>
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center gap-3">
-              <img src={logo} alt="InsureOps" className="h-9 w-auto opacity-90" />
+              <img src={logo} alt="InsureOps" className="h-9 w-auto opacity-80" />
             </div>
-            <p className="text-sm text-muted-foreground/80 text-center">
+            <p className="text-sm text-center" style={{ color: 'hsl(210 15% 45%)' }}>
               Streamline loss run operations for insurance brokerages.
             </p>
             <div className="text-sm">
               <a 
                 href="mailto:hello@insureops.com" 
-                className="text-muted-foreground/80 hover:text-primary transition-colors duration-200"
+                className="transition-colors duration-200"
+                style={{ color: 'hsl(210 15% 45%)' }}
               >
                 hello@insureops.com
               </a>
             </div>
           </div>
-          <div className="mt-10 pt-8 border-t border-border/20 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-muted-foreground/60">
+          <div className="mt-10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4" style={{ borderTopColor: 'hsl(215 30% 13%)', borderTopWidth: '1px' }}>
+            <p className="text-xs" style={{ color: 'hsl(210 15% 35%)' }}>
               © {new Date().getFullYear()} InsureOps. All rights reserved.
             </p>
-            <p className="text-xs text-muted-foreground/60 max-w-md text-center md:text-right">
+            <p className="text-xs max-w-md text-center md:text-right" style={{ color: 'hsl(210 15% 35%)' }}>
               This app helps manage loss run requests and documents. It does not analyze or interpret insurance data.
             </p>
           </div>
