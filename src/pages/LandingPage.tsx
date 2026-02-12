@@ -1,101 +1,21 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { 
   Send, 
-  CheckCircle, 
   Users, 
   Building2, 
   Clock, 
   ArrowRight,
-  Mail,
-  Loader2,
   FileText,
   BarChart3,
   Shield,
-  Zap
 } from "lucide-react";
 import logo from "@/assets/logo.png";
+import DemoRequestModal from "@/components/DemoRequestModal";
 
 const LandingPage = () => {
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const { toast } = useToast();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email.trim()) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      toast({
-        title: "Invalid email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const trimmedEmail = email.trim().toLowerCase();
-      const timestamp = new Date().toISOString();
-      
-      const { error } = await supabase
-        .from("interest_signups")
-        .insert({ email: trimmedEmail });
-
-      if (error) {
-        if (error.code === "23505") {
-          toast({
-            title: "Already registered",
-            description: "This email is already on our early access list.",
-          });
-          setIsSubmitted(true);
-        } else {
-          throw error;
-        }
-      } else {
-        setIsSubmitted(true);
-        toast({
-          title: "You're on the list!",
-          description: "We'll reach out when access is available.",
-        });
-        
-        supabase.functions.invoke("notify-signup", {
-          body: { email: trimmedEmail, timestamp },
-        }).catch((err) => {
-          console.error("Failed to send admin notification:", err);
-        });
-      }
-    } catch (error) {
-      console.error("Signup error:", error);
-      toast({
-        title: "Something went wrong",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const scrollToSignup = () => {
-    document.getElementById("signup")?.scrollIntoView({ behavior: "smooth" });
-  };
+  const [demoOpen, setDemoOpen] = useState(false);
 
   return (
     <div className="landing-dark min-h-screen" style={{ background: 'hsl(215 50% 8%)' }}>
@@ -110,7 +30,7 @@ const LandingPage = () => {
             <img src={logo} alt="InsureOps Logo" className="h-10 w-auto" />
           </div>
           <Button 
-            onClick={scrollToSignup} 
+            onClick={() => setDemoOpen(true)} 
             size="sm" 
             className="text-sm font-medium px-5 h-9 rounded-lg transition-all duration-200 hover:-translate-y-0.5"
             style={{ 
@@ -119,19 +39,17 @@ const LandingPage = () => {
               boxShadow: '0 2px 12px hsla(205, 80%, 55%, 0.25)'
             }}
           >
-            Request Access
+            Request a Demo
           </Button>
         </div>
       </header>
 
       {/* Hero Section */}
       <section className="pt-32 pb-28 px-6 relative overflow-hidden">
-        {/* Subtle grid pattern overlay */}
         <div className="absolute inset-0 -z-10" style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, hsla(210, 20%, 30%, 0.15) 1px, transparent 0)`,
           backgroundSize: '48px 48px'
         }} />
-        {/* Soft glow */}
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full -z-10" style={{
           background: 'radial-gradient(ellipse, hsla(205, 80%, 55%, 0.08) 0%, transparent 70%)'
         }} />
@@ -146,7 +64,7 @@ const LandingPage = () => {
             />
           </div>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.08]" style={{ color: 'hsl(210 20% 95%)' }}>
-            Automate Loss Run
+            Streamline Loss Run
             <span className="block mt-1" style={{ 
               background: 'linear-gradient(135deg, hsl(205 80% 60%), hsl(180 50% 50%))',
               WebkitBackgroundClip: 'text',
@@ -156,12 +74,12 @@ const LandingPage = () => {
             </span>
           </h1>
           <p className="text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed" style={{ color: 'hsl(210 15% 58%)' }}>
-            A purpose-built platform for insurance brokerages to request, track, and manage loss runs — without the manual chase.
+            Purpose-built software for insurance brokerages to request, track, and manage loss runs — eliminating the manual chase.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
-              onClick={scrollToSignup} 
+              onClick={() => setDemoOpen(true)} 
               className="gap-2 h-13 px-8 text-base font-semibold rounded-xl transition-all duration-200 hover:-translate-y-0.5"
               style={{ 
                 background: 'hsl(205 80% 55%)', 
@@ -169,7 +87,7 @@ const LandingPage = () => {
                 boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.3)'
               }}
             >
-              Request Early Access
+              Request a Demo
               <ArrowRight className="w-4 h-4" />
             </Button>
             <Button 
@@ -183,7 +101,7 @@ const LandingPage = () => {
                 background: 'transparent'
               }}
             >
-              Learn More
+              See How It Works
             </Button>
           </div>
         </div>
@@ -270,7 +188,6 @@ const LandingPage = () => {
                 <p className="text-sm leading-relaxed" style={{ color: 'hsl(210 15% 52%)' }}>
                   {step.desc}
                 </p>
-                {/* Connector line */}
                 {i < 2 && (
                   <div className="hidden md:block absolute top-11 left-[65%] w-[70%] h-px" style={{
                     background: `linear-gradient(to right, hsl(${step.accent} / 0.3), transparent)`
@@ -323,81 +240,34 @@ const LandingPage = () => {
         <div className="h-px" style={{ background: 'linear-gradient(to right, transparent, hsl(215 30% 20%), transparent)' }} />
       </div>
 
-      {/* Email Signup */}
-      <section id="signup" className="py-28 px-6 relative overflow-hidden">
-        {/* Soft glow behind form */}
+      {/* CTA Section */}
+      <section className="py-28 px-6 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full -z-10" style={{
           background: 'radial-gradient(ellipse, hsla(205, 80%, 55%, 0.06) 0%, transparent 70%)'
         }} />
         
         <div className="max-w-xl mx-auto text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-8" style={{
-            background: 'hsla(205, 80%, 55%, 0.1)',
-            boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.08)'
-          }}>
-            <Mail className="w-8 h-8" style={{ color: 'hsl(205 80% 55%)' }} />
-          </div>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" style={{ color: 'hsl(210 20% 93%)' }}>
-            Get Early Access
+            Ready to simplify your loss run workflow?
           </h2>
           <p className="text-lg mb-10" style={{ color: 'hsl(210 15% 55%)' }}>
-            Join the waitlist and we'll reach out when access is available.
+            See how InsureOps helps brokerages save time and stay organized.
           </p>
-          
-          {isSubmitted ? (
-            <div className="rounded-2xl p-10 border" style={{
-              background: 'hsla(152, 55%, 42%, 0.08)',
-              borderColor: 'hsla(152, 55%, 42%, 0.2)',
-            }}>
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{
-                background: 'hsla(152, 55%, 42%, 0.15)',
-              }}>
-                <CheckCircle className="w-7 h-7" style={{ color: 'hsl(152 55% 45%)' }} />
-              </div>
-              <p className="font-semibold text-xl" style={{ color: 'hsl(210 20% 93%)' }}>You're on the list!</p>
-              <p className="mt-2" style={{ color: 'hsl(210 15% 55%)' }}>
-                We'll reach out when access is available.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
-              <Input
-                type="email"
-                placeholder="Enter your work email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 h-13 rounded-xl text-base transition-all duration-200"
-                style={{
-                  background: 'hsl(215 40% 12%)',
-                  borderColor: 'hsl(215 30% 22%)',
-                  color: 'hsl(210 20% 90%)',
-                }}
-                disabled={isSubmitting}
-              />
-              <Button 
-                type="submit" 
-                size="lg" 
-                disabled={isSubmitting} 
-                className="gap-2 h-13 px-8 rounded-xl text-base font-semibold transition-all duration-200 hover:-translate-y-0.5"
-                style={{ 
-                  background: 'hsl(205 80% 55%)', 
-                  color: 'white',
-                  boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.3)'
-                }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  "Request Access"
-                )}
-              </Button>
-            </form>
-          )}
+          <Button
+            size="lg"
+            onClick={() => setDemoOpen(true)}
+            className="gap-2 h-13 px-10 text-base font-semibold rounded-xl transition-all duration-200 hover:-translate-y-0.5"
+            style={{
+              background: 'hsl(205 80% 55%)',
+              color: 'white',
+              boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.3)'
+            }}
+          >
+            Request a Demo
+            <ArrowRight className="w-4 h-4" />
+          </Button>
           <p className="text-sm mt-6" style={{ color: 'hsl(210 15% 40%)' }}>
-            We respect your privacy. No spam, ever.
+            No commitment required. We'll walk you through the platform.
           </p>
         </div>
       </section>
@@ -410,7 +280,7 @@ const LandingPage = () => {
               <img src={logo} alt="InsureOps" className="h-9 w-auto opacity-80" />
             </div>
             <p className="text-sm text-center" style={{ color: 'hsl(210 15% 45%)' }}>
-              Streamline loss run operations for insurance brokerages.
+              Loss run operations software for insurance brokerages.
             </p>
             <div className="text-sm">
               <a 
@@ -432,6 +302,9 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Demo Request Modal */}
+      <DemoRequestModal open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   );
 };
