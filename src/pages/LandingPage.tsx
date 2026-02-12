@@ -32,11 +32,11 @@ const LandingPage = () => {
           <Button 
             onClick={() => setDemoOpen(true)} 
             size="sm" 
-            className="text-sm font-medium px-5 h-9 rounded-lg transition-all duration-200 hover:-translate-y-0.5"
+            className="text-sm font-semibold px-6 h-9 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
             style={{ 
-              background: 'hsl(205 80% 55%)', 
+              background: 'linear-gradient(135deg, hsl(205 80% 50%), hsl(205 85% 42%))',
               color: 'white',
-              boxShadow: '0 2px 12px hsla(205, 80%, 55%, 0.25)'
+              boxShadow: '0 2px 12px hsla(205, 80%, 45%, 0.35)'
             }}
           >
             Request a Demo
@@ -80,11 +80,12 @@ const LandingPage = () => {
             <Button 
               size="lg" 
               onClick={() => setDemoOpen(true)} 
-              className="gap-2 h-13 px-8 text-base font-semibold rounded-xl transition-all duration-200 hover:-translate-y-0.5"
+              className="gap-2.5 h-14 px-10 text-base font-bold rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
               style={{ 
-                background: 'hsl(205 80% 55%)', 
+                background: 'linear-gradient(135deg, hsl(205 80% 50%), hsl(205 85% 42%))',
                 color: 'white',
-                boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.3)'
+                boxShadow: '0 6px 24px hsla(205, 80%, 45%, 0.35)',
+                letterSpacing: '0.01em'
               }}
             >
               Request a Demo
@@ -92,12 +93,11 @@ const LandingPage = () => {
             </Button>
             <Button 
               size="lg" 
-              variant="outline" 
+              variant="ghost" 
               onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} 
-              className="h-13 px-8 text-base font-medium rounded-xl transition-all duration-200"
+              className="h-14 px-8 text-base font-medium rounded-xl transition-all duration-200"
               style={{ 
-                borderColor: 'hsl(215 30% 25%)',
-                color: 'hsl(210 15% 65%)',
+                color: 'hsl(210 15% 50%)',
                 background: 'transparent'
               }}
             >
@@ -256,11 +256,12 @@ const LandingPage = () => {
           <Button
             size="lg"
             onClick={() => setDemoOpen(true)}
-            className="gap-2 h-13 px-10 text-base font-semibold rounded-xl transition-all duration-200 hover:-translate-y-0.5"
+            className="gap-2.5 h-14 px-10 text-base font-bold rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
             style={{
-              background: 'hsl(205 80% 55%)',
+              background: 'linear-gradient(135deg, hsl(205 80% 50%), hsl(205 85% 42%))',
               color: 'white',
-              boxShadow: '0 4px 20px hsla(205, 80%, 55%, 0.3)'
+              boxShadow: '0 6px 24px hsla(205, 80%, 45%, 0.35)',
+              letterSpacing: '0.01em'
             }}
           >
             Request a Demo
