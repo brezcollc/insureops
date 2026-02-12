@@ -86,24 +86,6 @@ export function ClientOverviewTab({ client }: ClientOverviewTabProps) {
         </CardContent>
       </Card>
 
-      {/* Internal Notes */}
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Internal Notes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {client.internal_notes ? (
-            <p className="text-sm whitespace-pre-wrap">{client.internal_notes}</p>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              No internal notes. Click "Edit Client" to add notes.
-            </p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

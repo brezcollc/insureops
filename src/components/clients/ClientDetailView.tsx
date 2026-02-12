@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { 
@@ -12,8 +11,10 @@ import {
   Edit,
   Send,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  StickyNote
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useClient } from "@/hooks/useClients";
 import { usePoliciesByClient } from "@/hooks/usePolicies";
 import { useLossRunsByClient } from "@/hooks/useClientLossRuns";
@@ -21,6 +22,7 @@ import { ClientOverviewTab } from "@/components/clients/tabs/ClientOverviewTab";
 import { ClientPoliciesTab } from "@/components/clients/tabs/ClientPoliciesTab";
 import { ClientLossRunsTab } from "@/components/clients/tabs/ClientLossRunsTab";
 import { ClientDocumentsTab } from "@/components/clients/tabs/ClientDocumentsTab";
+import { ClientNotesTab } from "@/components/clients/tabs/ClientNotesTab";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import { BatchLossRunDialog } from "@/components/clients/BatchLossRunDialog";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -30,11 +32,20 @@ interface ClientDetailViewProps {
   onBack: () => void;
 }
 
+const tabs = [
+  { id: "overview", label: "Overview", icon: Building2 },
+  { id: "policies", label: "Policies", icon: FileText },
+  { id: "loss-runs", label: "Loss Run Requests", icon: ClipboardList },
+  { id: "documents", label: "Documents", icon: Upload },
+  { id: "notes", label: "Notes", icon: StickyNote },
+];
+
 const tabLabels: Record<string, string> = {
   overview: "Overview",
   policies: "Policies",
-  "loss-runs": "Loss Runs",
+  "loss-runs": "Loss Run Requests",
   documents: "Documents",
+  notes: "Notes",
 };
 
 export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
@@ -78,6 +89,23 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     { label: client.name },
     ...(activeTab !== "overview" ? [{ label: tabLabels[activeTab] }] : []),
   ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "overview":
+        return <ClientOverviewTab client={client} />;
+      case "policies":
+        return <ClientPoliciesTab clientId={clientId} />;
+      case "loss-runs":
+        return <ClientLossRunsTab clientId={clientId} clientName={client.name} />;
+      case "documents":
+        return <ClientDocumentsTab clientId={clientId} />;
+      case "notes":
+        return <ClientNotesTab client={client} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -153,13 +181,13 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             <div className="flex items-center gap-2">
               {isComplete ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  <span className="text-green-600 font-medium">All Reviewed</span>
+                  <CheckCircle2 className="w-4 h-4 text-success" />
+                  <span className="text-success font-medium">All Reviewed</span>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
-                  <span className="text-amber-600 font-medium">{pendingRequests} Pending Review</span>
+                  <AlertCircle className="w-4 h-4 text-warning" />
+                  <span className="text-warning font-medium">{pendingRequests} Pending Review</span>
                 </>
               )}
               <span className="text-muted-foreground text-xs tabular-nums">
@@ -174,53 +202,48 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         </div>
       </Card>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="h-9">
-          <TabsTrigger value="overview" className="gap-1.5 text-xs px-3">
-            <Building2 className="w-3.5 h-3.5" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="policies" className="gap-1.5 text-xs px-3">
-            <FileText className="w-3.5 h-3.5" />
-            Policies
-            {policyCount > 0 && (
-              <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">
-                {policyCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="loss-runs" className="gap-1.5 text-xs px-3">
-            <ClipboardList className="w-3.5 h-3.5" />
-            Loss Runs
-            {pendingRequests > 0 && (
-              <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                {pendingRequests}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-1.5 text-xs px-3">
-            <Upload className="w-3.5 h-3.5" />
-            Documents
-          </TabsTrigger>
-        </TabsList>
+      {/* Client-Scoped Navigation Tabs */}
+      <nav className="border-b border-border">
+        <div className="flex items-center gap-1 -mb-px">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                  isActive
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+                {tab.id === "policies" && policyCount > 0 && (
+                  <Badge variant="secondary" className={cn(
+                    "ml-1 h-5 px-1.5 text-[11px]",
+                    isActive ? "bg-primary/10 text-primary" : ""
+                  )}>
+                    {policyCount}
+                  </Badge>
+                )}
+                {tab.id === "loss-runs" && pendingRequests > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[11px] bg-warning/10 text-warning">
+                    {pendingRequests}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
-        <TabsContent value="overview" className="mt-4">
-          <ClientOverviewTab client={client} />
-        </TabsContent>
-
-        <TabsContent value="policies" className="mt-4">
-          <ClientPoliciesTab clientId={clientId} />
-        </TabsContent>
-
-        <TabsContent value="loss-runs" className="mt-4">
-          <ClientLossRunsTab clientId={clientId} clientName={client.name} />
-        </TabsContent>
-
-        <TabsContent value="documents" className="mt-4">
-          <ClientDocumentsTab clientId={clientId} />
-        </TabsContent>
-      </Tabs>
+      {/* Tab Content */}
+      <div className="mt-4">
+        {renderTabContent()}
+      </div>
 
       {/* Edit Dialog */}
       <ClientFormDialog
