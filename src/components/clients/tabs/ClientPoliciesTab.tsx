@@ -12,10 +12,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, FileText, Loader2, Trash2, Edit, Mail, Calendar, Shield } from "lucide-react";
+import { Plus, FileText, Loader2, Trash2, Edit, Mail, Calendar, Shield, ChevronDown, ChevronRight } from "lucide-react";
 import { usePoliciesByClient, useDeletePolicy } from "@/hooks/usePolicies";
 import { PolicyFormDialog } from "@/components/clients/PolicyFormDialog";
 import { useLossRunsByClient } from "@/hooks/useClientLossRuns";
+import { PolicyLossRunDocuments } from "@/components/clients/PolicyLossRunDocuments";
 import type { Policy } from "@/hooks/usePolicies";
 
 interface ClientPoliciesTabProps {
@@ -39,6 +40,7 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [deletingPolicy, setDeletingPolicy] = useState<Policy | null>(null);
+  const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
 
   const handleDelete = async () => {
     if (!deletingPolicy) return;
@@ -106,91 +108,113 @@ export function ClientPoliciesTab({ clientId }: ClientPoliciesTabProps) {
             return (
               <Card
                 key={policy.id}
-                className="p-0 overflow-hidden cursor-pointer hover:shadow-card-hover transition-shadow group"
-                onClick={() => setEditingPolicy(policy)}
+                className="p-0 overflow-hidden transition-shadow"
               >
                 <div className="flex items-stretch">
                   {/* Left accent bar */}
                   <div className="w-1 bg-primary shrink-0" />
 
-                  <div className="flex-1 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      {/* Policy info */}
-                      <div className="min-w-0 flex-1 space-y-2">
-                        {/* Top line: policy number + coverage type */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono font-semibold text-foreground">
-                            {policy.policy_number}
-                          </span>
-                          <Badge variant="secondary" className="text-xs">
-                            {coverageTypeLabels[policy.coverage_type] || policy.coverage_type}
-                          </Badge>
-                        </div>
+                  <div className="flex-1">
+                    <div className="p-4 cursor-pointer hover:bg-muted/30 transition-colors group" onClick={() => setEditingPolicy(policy)}>
+                      <div className="flex items-start justify-between gap-4">
+                        {/* Policy info */}
+                        <div className="min-w-0 flex-1 space-y-2">
+                          {/* Top line: policy number + coverage type */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono font-semibold text-foreground">
+                              {policy.policy_number}
+                            </span>
+                            <Badge variant="secondary" className="text-xs">
+                              {coverageTypeLabels[policy.coverage_type] || policy.coverage_type}
+                            </Badge>
+                          </div>
 
-                        {/* Detail rows */}
-                        <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground">
-                          {/* Carrier */}
-                          <span className="flex items-center gap-1.5">
-                            <Shield className="w-3.5 h-3.5" />
-                            {policy.carriers?.name || "Unknown Carrier"}
-                          </span>
-
-                          {/* Policy Period */}
-                          {period && (
+                          {/* Detail rows */}
+                          <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground">
                             <span className="flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5" />
-                              {period}
+                              <Shield className="w-3.5 h-3.5" />
+                              {policy.carriers?.name || "Unknown Carrier"}
                             </span>
-                          )}
+                            {period && (
+                              <span className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {period}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Carrier email */}
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {policy.carrier_email ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted border border-border/60 text-muted-foreground max-w-[280px] truncate">
+                                <Mail className="w-3 h-3 shrink-0 text-primary" />
+                                {policy.carrier_email}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-destructive/70 italic flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                No carrier email set
+                              </span>
+                            )}
+                            {lastRequested && (
+                              <span className="text-xs text-muted-foreground">
+                                Last requested: {formatShortDate(lastRequested)}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Carrier email */}
-                        <div className="flex items-center gap-3 flex-wrap">
-                          {policy.carrier_email ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted border border-border/60 text-muted-foreground max-w-[280px] truncate">
-                              <Mail className="w-3 h-3 shrink-0 text-primary" />
-                              {policy.carrier_email}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-destructive/70 italic flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              No carrier email set
-                            </span>
-                          )}
-
-                          {lastRequested && (
-                            <span className="text-xs text-muted-foreground">
-                              Last requested: {formatShortDate(lastRequested)}
-                            </span>
-                          )}
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingPolicy(policy);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingPolicy(policy);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingPolicy(policy);
-                          }}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingPolicy(policy);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                    {/* Documents toggle */}
+                    <div className="border-t border-border">
+                      <button
+                        className="flex items-center gap-2 w-full px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                        onClick={() => setExpandedPolicy(expandedPolicy === policy.id ? null : policy.id)}
+                      >
+                        {expandedPolicy === policy.id ? (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                        <FileText className="w-3.5 h-3.5" />
+                        Loss Run Documents
+                      </button>
+                      {expandedPolicy === policy.id && (
+                        <div className="px-4 pb-4">
+                          <PolicyLossRunDocuments
+                            policyId={policy.id}
+                            clientId={clientId}
+                            policyNumber={policy.policy_number}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
