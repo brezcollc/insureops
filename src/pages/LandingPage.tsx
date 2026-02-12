@@ -59,7 +59,7 @@ const LandingPage = () => {
             <img 
               src={logo} 
               alt="InsureOps" 
-              className="h-40 md:h-48 lg:h-56 w-auto" 
+              className="h-80 md:h-96 lg:h-[28rem] w-auto" 
               style={{ filter: 'drop-shadow(0 4px 24px hsla(205, 80%, 55%, 0.15))' }}
             />
           </div>
