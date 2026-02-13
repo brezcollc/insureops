@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { 
+import {
   Building2, 
   FileText, 
   ClipboardList, 
@@ -108,19 +107,20 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Breadcrumbs */}
       <Breadcrumbs items={breadcrumbItems} />
 
-      {/* Compact Header with Stats */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Building2 className="w-6 h-6 text-primary" />
-          </div>
+      {/* Client Header Card */}
+      <div className="bg-card rounded-xl border border-border p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Building2 className="w-7 h-7 text-primary" />
+            </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl font-semibold text-foreground truncate">{client.name}</h2>
+                <h2 className="text-2xl font-bold text-foreground truncate">{client.name}</h2>
                 {client.client_code && (
                   <span className="text-sm text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded">
                     {client.client_code}
@@ -133,76 +133,71 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 )}
               </div>
               {client.industry && (
-                <p className="text-sm text-muted-foreground">{client.industry}</p>
+                <p className="text-sm text-muted-foreground mt-1">{client.industry}</p>
               )}
             </div>
           </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button onClick={() => setIsBatchLossRunOpen(true)} size="sm">
-            <Send className="w-4 h-4 mr-2" />
-            Request Loss Runs
-          </Button>
-          <Button variant="outline" onClick={() => setIsEditOpen(true)} size="sm">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setIsBatchLossRunOpen(true)} size="default">
+              <Send className="w-4 h-4 mr-2" />
+              Request Loss Runs
+            </Button>
+            <Button variant="outline" onClick={() => setIsEditOpen(true)} size="default">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Client
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Stats Summary Bar */}
-      <Card className="p-3">
-        <div className="flex items-center gap-6 flex-wrap text-sm">
-          {/* Policies */}
+        {/* Stats Summary */}
+        <div className="flex items-center gap-6 flex-wrap text-sm mt-5 pt-5 border-t border-border/60">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium tabular-nums">{policyCount}</span>
-            <span className="text-muted-foreground">
-              {policyCount === 1 ? "Policy" : "Policies"}
-            </span>
+            <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center">
+              <FileText className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <span className="font-semibold tabular-nums text-foreground">{policyCount}</span>
+              <span className="text-muted-foreground ml-1">{policyCount === 1 ? "Policy" : "Policies"}</span>
+            </div>
           </div>
 
-          <div className="w-px h-4 bg-border" />
+          <div className="w-px h-8 bg-border" />
 
-          {/* Loss Run Requests */}
           <div className="flex items-center gap-2">
-            <ClipboardList className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium tabular-nums">{totalRequests}</span>
-            <span className="text-muted-foreground">
-              {totalRequests === 1 ? "Request" : "Requests"}
-            </span>
+            <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center">
+              <ClipboardList className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <span className="font-semibold tabular-nums text-foreground">{totalRequests}</span>
+              <span className="text-muted-foreground ml-1">{totalRequests === 1 ? "Request" : "Requests"}</span>
+            </div>
           </div>
 
-          <div className="w-px h-4 bg-border" />
+          <div className="w-px h-8 bg-border" />
 
-          {/* Review Status */}
           {totalRequests > 0 ? (
             <div className="flex items-center gap-2">
               {isComplete ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-success" />
-                  <span className="text-success font-medium">All Reviewed</span>
+                  <CheckCircle2 className="w-5 h-5 text-success" />
+                  <span className="text-success font-semibold">All Reviewed</span>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="w-4 h-4 text-warning" />
-                  <span className="text-warning font-medium">{pendingRequests} Pending Review</span>
+                  <AlertCircle className="w-5 h-5 text-warning" />
+                  <span className="text-warning font-semibold">{pendingRequests} Pending Review</span>
                 </>
               )}
-              <span className="text-muted-foreground text-xs tabular-nums">
-                ({reviewedRequests}/{totalRequests})
-              </span>
+              <span className="text-muted-foreground text-xs tabular-nums">({reviewedRequests}/{totalRequests})</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="text-xs">No loss run requests yet</span>
-            </div>
+            <span className="text-sm text-muted-foreground">No loss run requests yet</span>
           )}
         </div>
-      </Card>
+      </div>
 
-      {/* Client-Scoped Navigation Tabs */}
+      {/* Navigation Tabs */}
       <nav className="border-b border-border">
         <div className="flex items-center gap-1 -mb-px">
           {tabs.map((tab) => {
@@ -213,7 +208,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
                   isActive
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
@@ -241,7 +236,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       </nav>
 
       {/* Tab Content */}
-      <div className="mt-4">
+      <div>
         {renderTabContent()}
       </div>
 

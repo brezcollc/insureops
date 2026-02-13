@@ -240,76 +240,68 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
         </div>
       </div>
 
-      {/* Client List - Dense Card Layout */}
-      <div className="space-y-1">
+      {/* Client Cards */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {clients.map((client) => (
           <div
             key={client.id}
-            className={`group flex items-center gap-4 px-4 py-3 rounded-lg border border-transparent hover:border-border hover:bg-muted/40 cursor-pointer transition-all ${
+            className={`group relative bg-card rounded-xl border border-border hover:border-primary/30 hover:shadow-md cursor-pointer transition-all duration-200 ${
               client.status === "archived" ? "opacity-60" : ""
             }`}
             onClick={() => onClientSelect(client.id)}
           >
-            {/* Client Icon & Name */}
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-foreground truncate">{client.name}</p>
-                  {client.client_code && (
-                    <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
-                      {client.client_code}
-                    </span>
-                  )}
-                  {client.status === "archived" && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                      Archived
-                    </Badge>
-                  )}
+            <div className="p-5">
+              {/* Header */}
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Building2 className="w-5 h-5 text-primary" />
                 </div>
-                {client.industry && (
-                  <p className="text-xs text-muted-foreground truncate">{client.industry}</p>
-                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-foreground truncate">{client.name}</p>
+                    {client.status === "archived" && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Archived</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {client.client_code && (
+                      <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
+                        {client.client_code}
+                      </span>
+                    )}
+                    {client.industry && (
+                      <span className="text-xs text-muted-foreground truncate">{client.industry}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="flex items-center gap-4 pt-3 border-t border-border/60">
+                <div className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-sm font-medium tabular-nums">{client.policy_count}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {client.policy_count === 1 ? "policy" : "policies"}
+                  </span>
+                </div>
+                <div className="w-px h-4 bg-border" />
+                <ProgressIndicator reviewed={client.reviewed_request_count} total={client.total_request_count} />
+              </div>
+
+              {/* Last Activity */}
+              <div className="flex items-center gap-1.5 mt-2 text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span className="text-[11px]">{formatRelativeTime(client.last_activity)}</span>
               </div>
             </div>
 
-            {/* Policies */}
-            <div className="hidden sm:flex items-center gap-1.5 min-w-[80px]">
-              <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-sm tabular-nums">
-                {client.policy_count}
-                <span className="text-muted-foreground text-xs ml-0.5">
-                  {client.policy_count === 1 ? "policy" : "policies"}
-                </span>
-              </span>
-            </div>
-
-            {/* Loss Run Progress */}
-            <div className="hidden md:block min-w-[140px]">
-              <ProgressIndicator 
-                reviewed={client.reviewed_request_count} 
-                total={client.total_request_count} 
-              />
-            </div>
-
-            {/* Last Activity */}
-            <div className="hidden lg:flex items-center gap-1.5 min-w-[80px] text-muted-foreground">
-              <Clock className="w-3.5 h-3.5" />
-              <span className="text-xs">{formatRelativeTime(client.last_activity)}</span>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {/* Hover Actions */}
+            <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
+                  <Button variant="secondary" size="icon" className="h-7 w-7 shadow-sm">
+                    <MoreHorizontal className="w-3.5 h-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -321,51 +313,41 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
                     Edit Client
                   </DropdownMenuItem>
                   {client.status === "archived" ? (
-                    <DropdownMenuItem 
-                      onClick={() => restoreClient.mutate(client.id)}
-                      disabled={restoreClient.isPending}
-                    >
+                    <DropdownMenuItem onClick={() => restoreClient.mutate(client.id)} disabled={restoreClient.isPending}>
                       <RotateCcw className="w-4 h-4 mr-2" />
                       Restore
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem 
-                      onClick={() => archiveClient.mutate(client.id)}
-                      disabled={archiveClient.isPending}
-                      className="text-destructive"
-                    >
+                    <DropdownMenuItem onClick={() => archiveClient.mutate(client.id)} disabled={archiveClient.isPending} className="text-destructive">
                       <Archive className="w-4 h-4 mr-2" />
                       Archive
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
             </div>
           </div>
         ))}
-
-        {/* Empty State */}
-        {clients.length === 0 && !isFetching && (
-          <div className="text-center py-16 border border-dashed rounded-lg bg-muted/20">
-            <Building2 className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-            <p className="font-medium text-foreground mb-1">
-              {committedSearch ? "No clients found" : "No clients yet"}
-            </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              {committedSearch
-                ? "Try adjusting your search terms"
-                : "Add your first client to get started"}
-            </p>
-            {!committedSearch && (
-              <Button size="sm" onClick={() => setIsCreateOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Client
-              </Button>
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Empty State */}
+      {clients.length === 0 && !isFetching && (
+        <div className="text-center py-16 border border-dashed rounded-xl bg-muted/20">
+          <Building2 className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+          <p className="font-medium text-foreground mb-1">
+            {committedSearch ? "No clients found" : "No clients yet"}
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
+            {committedSearch ? "Try adjusting your search terms" : "Add your first client to get started"}
+          </p>
+          {!committedSearch && (
+            <Button size="sm" onClick={() => setIsCreateOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Client
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
