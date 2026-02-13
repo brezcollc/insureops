@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import type { Policy } from "@/hooks/usePolicies";
 import type { LossRunRequest } from "@/hooks/useLossRunRequests";
 
@@ -17,6 +18,7 @@ export interface BatchLossRunResult {
 
 export function useBatchLossRunRequests() {
   const queryClient = useQueryClient();
+  const { organizationId } = useOrganization();
   const { toast } = useToast();
 
   return useMutation({
@@ -53,6 +55,7 @@ export function useBatchLossRunRequests() {
           const { data: request, error: requestError } = await supabase
             .from("loss_run_requests")
             .insert({
+              organization_id: organizationId,
               client_id: clientId,
               carrier_id: policy.carrier_id,
               policy_number: policy.policy_number,

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface PolicyDocument {
   id: string;
@@ -47,6 +48,7 @@ interface UploadPolicyDocumentParams {
 export function useUploadPolicyDocument() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { organizationId } = useOrganization();
 
   return useMutation({
     mutationFn: async ({ policyId, clientId, file, title, notes }: UploadPolicyDocumentParams) => {
@@ -68,6 +70,7 @@ export function useUploadPolicyDocument() {
       const { data: docRecord, error: dbError } = await supabase
         .from("loss_run_documents")
         .insert([{
+          organization_id: organizationId,
           policy_id: policyId,
           client_id: clientId,
           title,

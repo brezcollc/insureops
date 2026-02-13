@@ -56,6 +56,7 @@ export type Database = {
           id: string
           loss_run_email: string
           name: string
+          organization_id: string | null
           phone: string | null
           underwriter_email: string | null
           updated_at: string
@@ -66,6 +67,7 @@ export type Database = {
           id?: string
           loss_run_email: string
           name: string
+          organization_id?: string | null
           phone?: string | null
           underwriter_email?: string | null
           updated_at?: string
@@ -76,11 +78,20 @@ export type Database = {
           id?: string
           loss_run_email?: string
           name?: string
+          organization_id?: string | null
           phone?: string | null
           underwriter_email?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "carriers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clients: {
         Row: {
@@ -94,6 +105,7 @@ export type Database = {
           industry: string | null
           internal_notes: string | null
           name: string
+          organization_id: string | null
           renewal_date: string | null
           status: string | null
           updated_at: string
@@ -109,6 +121,7 @@ export type Database = {
           industry?: string | null
           internal_notes?: string | null
           name: string
+          organization_id?: string | null
           renewal_date?: string | null
           status?: string | null
           updated_at?: string
@@ -124,11 +137,20 @@ export type Database = {
           industry?: string | null
           internal_notes?: string | null
           name?: string
+          organization_id?: string | null
           renewal_date?: string | null
           status?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_logs: {
         Row: {
@@ -136,6 +158,7 @@ export type Database = {
           created_by: string | null
           email_type: Database["public"]["Enums"]["email_type"]
           id: string
+          organization_id: string | null
           recipient: string
           request_id: string
           sent_at: string
@@ -146,6 +169,7 @@ export type Database = {
           created_by?: string | null
           email_type: Database["public"]["Enums"]["email_type"]
           id?: string
+          organization_id?: string | null
           recipient: string
           request_id: string
           sent_at?: string
@@ -156,12 +180,20 @@ export type Database = {
           created_by?: string | null
           email_type?: Database["public"]["Enums"]["email_type"]
           id?: string
+          organization_id?: string | null
           recipient?: string
           request_id?: string
           sent_at?: string
           subject?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "email_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_logs_request_id_fkey"
             columns: ["request_id"]
@@ -202,6 +234,7 @@ export type Database = {
           id: string
           mime_type: string | null
           notes: string | null
+          organization_id: string | null
           policy_id: string | null
           request_id: string | null
           title: string | null
@@ -216,6 +249,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           notes?: string | null
+          organization_id?: string | null
           policy_id?: string | null
           request_id?: string | null
           title?: string | null
@@ -230,6 +264,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           notes?: string | null
+          organization_id?: string | null
           policy_id?: string | null
           request_id?: string | null
           title?: string | null
@@ -241,6 +276,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loss_run_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -268,6 +310,7 @@ export type Database = {
           created_by: string | null
           id: string
           notes: string | null
+          organization_id: string | null
           policy_effective_date: string | null
           policy_expiration_date: string | null
           policy_number: string
@@ -286,6 +329,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string | null
           policy_effective_date?: string | null
           policy_expiration_date?: string | null
           policy_number: string
@@ -304,6 +348,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string | null
           policy_effective_date?: string | null
           policy_expiration_date?: string | null
           policy_number?: string
@@ -329,7 +374,70 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "loss_run_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       policies: {
         Row: {
@@ -343,6 +451,7 @@ export type Database = {
           expiration_date: string | null
           id: string
           notes: string | null
+          organization_id: string | null
           policy_number: string
           updated_at: string
         }
@@ -357,6 +466,7 @@ export type Database = {
           expiration_date?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string | null
           policy_number: string
           updated_at?: string
         }
@@ -371,6 +481,7 @@ export type Database = {
           expiration_date?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string | null
           policy_number?: string
           updated_at?: string
         }
@@ -389,6 +500,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "policies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -396,7 +514,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_organization_id: { Args: never; Returns: string }
       is_authenticated: { Args: never; Returns: boolean }
+      user_belongs_to_org: { Args: { _org_id: string }; Returns: boolean }
     }
     Enums: {
       coverage_type:
