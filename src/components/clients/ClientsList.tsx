@@ -124,13 +124,23 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
     searchQuery: debouncedSearch,
     sortBy,
   });
+
+  // Keep showing previous results while new data loads to prevent flickering
+  const [stableData, setStableData] = useState(data);
+  useEffect(() => {
+    if (data && !isFetching) {
+      setStableData(data);
+    }
+  }, [data, isFetching]);
+
+  const displayData = stableData || data;
   
   const archiveClient = useArchiveClient();
   const restoreClient = useRestoreClient();
 
-  const clients = data?.clients || [];
-  const totalCount = data?.totalCount || 0;
-  const totalPages = data?.totalPages || 1;
+  const clients = displayData?.clients || [];
+  const totalCount = displayData?.totalCount || 0;
+  const totalPages = displayData?.totalPages || 1;
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
