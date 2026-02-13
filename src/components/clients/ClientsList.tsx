@@ -250,9 +250,9 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
             }`}
             onClick={() => onClientSelect(client.id)}
           >
-            <div className="p-5">
+            <div className="p-4">
               {/* Header */}
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   <Building2 className="w-5 h-5 text-primary" />
                 </div>
@@ -277,7 +277,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
               </div>
 
               {/* Stats */}
-              <div className="flex items-center gap-4 pt-3 border-t border-border/60">
+              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/60">
                 <div className="flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-muted-foreground" />
                   <span className="text-sm font-medium tabular-nums">{client.policy_count}</span>
@@ -290,7 +290,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
               </div>
 
               {/* Last Activity */}
-              <div className="flex items-center gap-1.5 mt-2 text-muted-foreground">
+              <div className="flex items-center gap-1.5 mt-3 text-muted-foreground">
                 <Clock className="w-3 h-3" />
                 <span className="text-[11px]">{formatRelativeTime(client.last_activity)}</span>
               </div>
