@@ -50,8 +50,8 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <div className="flex justify-center mb-4">
           <img src={logo} alt="InsureOps" className="h-16 w-auto" />
         </div>
-        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-        <CardDescription>Sign in to your InsureOps account</CardDescription>
+        <CardTitle className="text-2xl font-bold">Brokerage Access</CardTitle>
+        <CardDescription>Sign in to your InsureOps client portal</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -99,15 +99,22 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             )}
           </Button>
         </form>
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
-          <button
-            type="button"
-            onClick={onSwitchToSignup}
+
+        <div className="mt-6 rounded-lg bg-muted/50 border border-border/40 px-4 py-3 text-center">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            InsureOps accounts are provisioned by your organization administrator.
+            If you need access, please contact your brokerage administrator.
+          </p>
+        </div>
+
+        <div className="mt-4 text-center text-xs text-muted-foreground">
+          Need InsureOps for your brokerage?{" "}
+          <a
+            href="/"
             className="text-primary hover:underline font-medium"
           >
-            Sign up
-          </button>
+            Request a Demo
+          </a>
         </div>
       </CardContent>
     </Card>
