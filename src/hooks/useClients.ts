@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export interface Client {
   id: string;
@@ -250,12 +251,14 @@ export function useClient(id: string | null) {
 export function useCreateClient() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { organizationId } = useOrganization();
 
   return useMutation({
     mutationFn: async (input: CreateClientInput) => {
       const { data, error } = await supabase
         .from("clients")
         .insert({
+          organization_id: organizationId,
           name: input.name,
           client_code: input.client_code || null,
           contact_email: input.contact_email || null,

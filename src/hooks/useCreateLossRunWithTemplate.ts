@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import type { LossRunRequest, CoverageType } from "@/hooks/useLossRunRequests";
 
 interface CreateLossRunWithTemplateInput {
@@ -20,6 +21,7 @@ interface CreateLossRunWithTemplateInput {
 export function useCreateLossRunWithTemplate() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { organizationId } = useOrganization();
 
   return useMutation({
     mutationFn: async (input: CreateLossRunWithTemplateInput) => {
@@ -27,6 +29,7 @@ export function useCreateLossRunWithTemplate() {
       const { data: request, error: requestError } = await supabase
         .from("loss_run_requests")
         .insert({
+          organization_id: organizationId,
           client_id: input.client_id,
           carrier_id: input.carrier_id,
           policy_number: input.policy_number,

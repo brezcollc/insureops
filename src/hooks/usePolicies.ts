@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import type { Carrier, CoverageType } from "@/hooks/useLossRunRequests";
 
 export interface Policy {
@@ -58,12 +59,14 @@ export function usePoliciesByClient(clientId: string | null) {
 export function useCreatePolicy() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { organizationId } = useOrganization();
 
   return useMutation({
     mutationFn: async (input: CreatePolicyInput) => {
       const { data, error } = await supabase
         .from("policies")
         .insert({
+          organization_id: organizationId,
           client_id: input.client_id,
           carrier_id: input.carrier_id,
           policy_number: input.policy_number,
