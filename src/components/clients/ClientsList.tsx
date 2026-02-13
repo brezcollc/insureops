@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Clock,
-  AlertCircle
+  AlertCircle,
+  X
 } from "lucide-react";
 import { useClientsWithStats, useArchiveClient, useRestoreClient } from "@/hooks/useClients";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
@@ -96,21 +97,29 @@ interface ClientsListProps {
 
 export function ClientsList({ onClientSelect }: ClientsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [committedSearch, setCommittedSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientWithStats | null>(null);
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-      setCurrentPage(1); // Reset to page 1 on search
-    }, 300);
-    return () => clearTimeout(timer);
+  const executeSearch = useCallback(() => {
+    setCommittedSearch(searchQuery);
+    setCurrentPage(1);
   }, [searchQuery]);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+    setCommittedSearch("");
+    setCurrentPage(1);
+  }, []);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      executeSearch();
+    }
+  };
 
   // Reset to page 1 when sort or archived filter changes
   useEffect(() => {
@@ -121,7 +130,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
     includeArchived: showArchived,
     page: currentPage,
     pageSize: PAGE_SIZE,
-    searchQuery: debouncedSearch,
+    searchQuery: committedSearch,
     sortBy,
   });
 
@@ -181,14 +190,29 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
 
       {/* Search & Controls */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, code, industry, or email..."
-            className="pl-10 h-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-lg">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, code, industry, or email..."
+              className="pl-10 pr-8 h-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <Button variant="secondary" size="sm" className="h-9 px-3" onClick={executeSearch}>
+            <Search className="w-4 h-4 mr-1.5" />
+            Search
+          </Button>
         </div>
         
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
@@ -326,14 +350,14 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
           <div className="text-center py-16 border border-dashed rounded-lg bg-muted/20">
             <Building2 className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
             <p className="font-medium text-foreground mb-1">
-              {debouncedSearch ? "No clients found" : "No clients yet"}
+              {committedSearch ? "No clients found" : "No clients yet"}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              {debouncedSearch
+              {committedSearch
                 ? "Try adjusting your search terms"
                 : "Add your first client to get started"}
             </p>
-            {!debouncedSearch && (
+            {!committedSearch && (
               <Button size="sm" onClick={() => setIsCreateOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Client
