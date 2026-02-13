@@ -245,7 +245,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
         {clients.map((client) => (
           <div
             key={client.id}
-            className={`group relative bg-card rounded-xl border-[1.5px] border-border/80 shadow-sm hover:shadow-md hover:border-primary/30 cursor-pointer transition-all duration-200 ${
+            className={`group relative bg-card rounded-xl border-2 border-border shadow-sm hover:shadow-md hover:border-primary/40 cursor-pointer transition-all duration-200 ${
               client.status === "archived" ? "opacity-60" : ""
             }`}
             onClick={() => onClientSelect(client.id)}
