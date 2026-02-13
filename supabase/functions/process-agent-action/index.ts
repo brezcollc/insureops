@@ -316,7 +316,7 @@ What is the next best action for this request?`;
         const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-loss-run-email`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${supabaseKey}`,
+            Authorization: `Bearer ${supabaseServiceKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
