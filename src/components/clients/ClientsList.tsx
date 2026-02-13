@@ -245,7 +245,7 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
         {clients.map((client) => (
           <div
             key={client.id}
-            className={`group relative bg-card rounded-xl border border-border hover:border-primary/30 hover:shadow-md cursor-pointer transition-all duration-200 ${
+            className={`group relative bg-card rounded-xl border-[1.5px] border-border/80 shadow-sm hover:shadow-md hover:border-primary/30 cursor-pointer transition-all duration-200 ${
               client.status === "archived" ? "opacity-60" : ""
             }`}
             onClick={() => onClientSelect(client.id)}
@@ -263,9 +263,9 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Archived</Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-1">
                     {client.client_code && (
-                      <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
+                      <span className="text-xs font-semibold text-foreground/70 font-mono bg-muted/80 border border-border/60 px-2 py-0.5 rounded">
                         {client.client_code}
                       </span>
                     )}
