@@ -116,6 +116,17 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
             Request a Demo
           </a>
         </div>
+
+        <div className="mt-3 text-center text-sm text-muted-foreground">
+          Don't have an account?{" "}
+          <button
+            type="button"
+            onClick={onSwitchToSignup}
+            className="text-primary hover:underline font-medium"
+          >
+            Sign up
+          </button>
+        </div>
       </CardContent>
     </Card>
   );
