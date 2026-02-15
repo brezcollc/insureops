@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
-  Send, 
+  Layers, 
   Users, 
   Building2, 
-  Clock, 
+  CalendarClock, 
   ArrowRight,
-  FileText,
-  BarChart3,
-  Shield,
+  FolderOpen,
+  Activity,
+  ShieldCheck,
+  Workflow,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import DemoRequestModal from "@/components/DemoRequestModal";
@@ -125,20 +126,24 @@ const LandingPage = () => {
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { icon: Send, title: "Request in Bulk", desc: "Send loss run requests across multiple carriers with a few clicks.", accent: '205 80% 55%' },
-              { icon: BarChart3, title: "Track Everything", desc: "Monitor responses, documents, and follow-ups in one central place.", accent: '180 50% 45%' },
-              { icon: FileText, title: "Stay Organized", desc: "Keep your book of business organized as it grows.", accent: '205 80% 55%' },
-              { icon: Shield, title: "Built for Brokerages", desc: "Designed around real brokerage workflows, not generic tools.", accent: '152 55% 42%' },
+              { icon: Layers, title: "Request in Bulk", desc: "Send loss run requests across multiple carriers with a few clicks.", accent: '205 80% 55%', featured: true },
+              { icon: Activity, title: "Track Everything", desc: "Monitor responses, documents, and follow-ups in one central place.", accent: '180 50% 45%', featured: false },
+              { icon: FolderOpen, title: "Stay Organized", desc: "Keep your book of business organized as it grows.", accent: '205 80% 55%', featured: false },
+              { icon: ShieldCheck, title: "Built for Brokerages", desc: "Designed around real brokerage workflows, not generic tools.", accent: '152 55% 42%', featured: false },
             ].map((item, i) => (
-              <Card key={i} className="group border rounded-2xl transition-all duration-300 hover:-translate-y-1" style={{ 
-                background: 'hsl(215 40% 12%)',
-                borderColor: 'hsl(215 30% 18%)',
+              <Card key={i} className={`group border rounded-2xl transition-all duration-300 hover:-translate-y-1 ${i === 0 ? 'md:col-span-2 lg:col-span-1' : ''}`} style={{ 
+                background: item.featured 
+                  ? 'linear-gradient(160deg, hsl(215 40% 13%), hsl(215 35% 10%))' 
+                  : 'hsl(215 40% 12%)',
+                borderColor: item.featured ? 'hsl(205 60% 25%)' : 'hsl(215 30% 18%)',
+                boxShadow: item.featured ? '0 4px 24px hsla(205, 60%, 30%, 0.08)' : 'none',
               }}>
                 <CardContent className="pt-7 pb-6 px-6">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-105" style={{
-                    background: `hsla(${item.accent}, 0.1)`,
+                  <div className="w-11 h-11 rounded-lg flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-105 border" style={{
+                    background: `hsla(${item.accent}, 0.08)`,
+                    borderColor: `hsla(${item.accent}, 0.15)`,
                   }}>
-                    <item.icon className="w-6 h-6" style={{ color: `hsl(${item.accent})` }} />
+                    <item.icon className="w-5 h-5" style={{ color: `hsl(${item.accent})` }} strokeWidth={1.75} />
                   </div>
                   <h3 className="font-semibold mb-2 text-base" style={{ color: 'hsl(210 20% 90%)' }}>{item.title}</h3>
                   <p className="text-sm leading-relaxed" style={{ color: 'hsl(210 15% 52%)' }}>
@@ -177,10 +182,11 @@ const LandingPage = () => {
                 background: 'hsl(215 40% 11%)',
                 borderColor: 'hsl(215 30% 18%)',
               }}>
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-6 transition-transform duration-300 group-hover:scale-105" style={{
-                  background: `linear-gradient(135deg, hsl(${step.accent}), hsl(${step.accent} / 0.7))`,
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold mx-auto mb-6 transition-transform duration-300 group-hover:scale-105 border" style={{
+                  background: `linear-gradient(145deg, hsl(${step.accent}), hsl(${step.accent} / 0.75))`,
+                  borderColor: `hsl(${step.accent} / 0.4)`,
                   color: 'white',
-                  boxShadow: `0 4px 16px hsl(${step.accent} / 0.25)`
+                  boxShadow: `0 4px 16px hsl(${step.accent} / 0.2), inset 0 1px 0 hsl(0 0% 100% / 0.1)`
                 }}>
                   {step.num}
                 </div>
@@ -217,16 +223,17 @@ const LandingPage = () => {
             {[
               { icon: Building2, label: "Independent Brokerages", accent: '205 80% 55%' },
               { icon: Users, label: "Account Managers", accent: '180 50% 45%' },
-              { icon: Clock, label: "Renewal Teams", accent: '152 55% 42%' },
+              { icon: CalendarClock, label: "Renewal Teams", accent: '152 55% 42%' },
             ].map((item, i) => (
               <div key={i} className="group flex items-center gap-4 rounded-2xl px-7 py-5 border transition-all duration-300 hover:-translate-y-0.5" style={{
-                background: 'hsl(215 40% 12%)',
+                background: 'linear-gradient(160deg, hsl(215 40% 13%), hsl(215 40% 11%))',
                 borderColor: 'hsl(215 30% 18%)',
               }}>
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105" style={{
-                  background: `hsla(${item.accent}, 0.1)`,
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border" style={{
+                  background: `hsla(${item.accent}, 0.08)`,
+                  borderColor: `hsla(${item.accent}, 0.15)`,
                 }}>
-                  <item.icon className="w-5 h-5" style={{ color: `hsl(${item.accent})` }} />
+                  <item.icon className="w-5 h-5" style={{ color: `hsl(${item.accent})` }} strokeWidth={1.75} />
                 </div>
                 <span className="font-medium text-base" style={{ color: 'hsl(210 20% 88%)' }}>{item.label}</span>
               </div>
