@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
@@ -30,18 +31,27 @@ const LandingPage = () => {
           <div className="flex items-center gap-3">
             <img src={logo} alt="InsureOps Logo" className="h-10 w-auto" />
           </div>
-          <Button 
-            onClick={() => setDemoOpen(true)} 
-            size="sm" 
-            className="text-sm font-semibold px-6 h-9 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
-            style={{ 
-              background: 'linear-gradient(135deg, hsl(205 80% 50%), hsl(205 85% 42%))',
-              color: 'white',
-              boxShadow: '0 2px 12px hsla(205, 80%, 45%, 0.35)'
-            }}
-          >
-            Request a Demo
-          </Button>
+          <div className="flex items-center gap-6">
+            <Link
+              to="/auth"
+              className="text-sm font-medium transition-colors duration-200 hover:opacity-100"
+              style={{ color: 'hsl(210 15% 55%)', opacity: 0.85 }}
+            >
+              Existing Clients – Login
+            </Link>
+            <Button 
+              onClick={() => setDemoOpen(true)} 
+              size="sm" 
+              className="text-sm font-semibold px-6 h-9 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
+              style={{ 
+                background: 'linear-gradient(135deg, hsl(205 80% 50%), hsl(205 85% 42%))',
+                color: 'white',
+                boxShadow: '0 2px 12px hsla(205, 80%, 45%, 0.35)'
+              }}
+            >
+              Request a Demo
+            </Button>
+          </div>
         </div>
       </header>
 
