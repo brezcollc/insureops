@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -77,8 +77,14 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
 
   const [showReviewConfirm, setShowReviewConfirm] = useState(false);
   const [showEmailPicker, setShowEmailPicker] = useState(false);
+  const [localReviewedAt, setLocalReviewedAt] = useState<string | null>(null);
 
-  const isReviewed = !!request?.reviewed_at;
+  // Reset local reviewed state when request changes
+  useEffect(() => {
+    setLocalReviewedAt(null);
+  }, [request?.id]);
+
+  const isReviewed = !!request?.reviewed_at || !!localReviewedAt;
 
   const handleRunAgent = async () => {
     if (!request) return;
@@ -160,6 +166,7 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
   const handleMarkAsReviewed = async () => {
     try {
       await markAsReviewed.mutateAsync(request.id);
+      setLocalReviewedAt(new Date().toISOString());
       setShowReviewConfirm(false);
     } catch (error) {
       toast({
