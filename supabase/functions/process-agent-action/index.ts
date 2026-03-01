@@ -16,7 +16,6 @@ interface AgentAction {
 
 type TriggerType = "manual" | "document_upload" | "follow_up" | "batch";
 
-// Check for duplicate actions within a time window (in hours)
 async function checkDuplicateAction(
   supabase: any,
   requestId: string,
@@ -25,7 +24,6 @@ async function checkDuplicateAction(
 ): Promise<boolean> {
   const windowStart = new Date();
   windowStart.setHours(windowStart.getHours() - hoursWindow);
-
   try {
     const { data, error } = await supabase
       .from("agent_action_logs")
@@ -34,43 +32,20 @@ async function checkDuplicateAction(
       .eq("action_taken", actionType)
       .gte("created_at", windowStart.toISOString())
       .limit(1);
-
-    if (error) {
-      console.error("Error checking duplicate action:", error);
-      return false;
-    }
-
+    if (error) { console.error("Error checking duplicate action:", error); return false; }
     return (data?.length || 0) > 0;
-  } catch (e) {
-    console.error("Exception checking duplicate action:", e);
-    return false;
-  }
+  } catch (e) { console.error("Exception checking duplicate action:", e); return false; }
 }
 
-// Log agent action for auditability
 async function logAgentAction(
-  supabase: any,
-  requestId: string,
-  triggerType: TriggerType,
-  actionTaken: string,
-  actionResult: string
+  supabase: any, requestId: string, triggerType: TriggerType, actionTaken: string, actionResult: string
 ): Promise<void> {
   try {
-    const { error } = await supabase
-      .from("agent_action_logs")
-      .insert([{
-        request_id: requestId,
-        trigger_type: triggerType,
-        action_taken: actionTaken,
-        action_result: actionResult,
-      }]);
-
-    if (error) {
-      console.error("Error logging agent action:", error);
-    }
-  } catch (e) {
-    console.error("Exception logging agent action:", e);
-  }
+    const { error } = await supabase.from("agent_action_logs").insert([{
+      request_id: requestId, trigger_type: triggerType, action_taken: actionTaken, action_result: actionResult,
+    }]);
+    if (error) console.error("Error logging agent action:", error);
+  } catch (e) { console.error("Exception logging agent action:", e); }
 }
 
 const AGENT_TOOLS = [
@@ -82,24 +57,10 @@ const AGENT_TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          action: {
-            type: "string",
-            enum: ["send_follow_up", "update_status", "add_note", "wait"],
-            description: "The action to take",
-          },
-          reason: {
-            type: "string",
-            description: "Brief explanation for this decision",
-          },
-          new_status: {
-            type: "string",
-            enum: ["requested", "follow_up_sent", "received"],
-            description: "New status if action is update_status. NOTE: 'completed' requires human review and cannot be set by the agent.",
-          },
-          note: {
-            type: "string",
-            description: "Note content if action is add_note",
-          },
+          action: { type: "string", enum: ["send_follow_up", "update_status", "add_note", "wait"], description: "The action to take" },
+          reason: { type: "string", description: "Brief explanation for this decision" },
+          new_status: { type: "string", enum: ["requested", "follow_up_sent", "received"], description: "New status if action is update_status." },
+          note: { type: "string", description: "Note content if action is add_note" },
         },
         required: ["action", "reason"],
         additionalProperties: false,
@@ -136,11 +97,30 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Authentication check - bypassed during development when no auth is implemented
+    // --- AUTH GATE ---
     const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !userData?.user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const { requestId, triggerType = "manual" } = await req.json();
     const trigger = (triggerType as TriggerType) || "manual";
@@ -152,17 +132,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use service role key for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch the request with related data
     const { data: request, error: fetchError } = await supabase
       .from("loss_run_requests")
-      .select(`
-        *,
-        clients (*),
-        carriers (*)
-      `)
+      .select(`*, clients (*), carriers (*)`)
       .eq("id", requestId)
       .single();
 
@@ -173,22 +147,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // CRITICAL: Check if request has been reviewed - if so, block all agent actions
     if (request.reviewed_at) {
-      // Log the blocked attempt
       await logAgentAction(supabase, requestId, trigger, "blocked", "Request is reviewed and locked");
-
       return new Response(
         JSON.stringify({
           success: true,
-          decision: {
-            action: "wait",
-            reason: "Request is reviewed and locked - no agent actions permitted",
-          },
-          result: {
-            executed: false,
-            details: "WAIT – Request is reviewed and locked. Human review has been completed and this request is now protected from automated changes.",
-          },
+          decision: { action: "wait", reason: "Request is reviewed and locked - no agent actions permitted" },
+          result: { executed: false, details: "WAIT – Request is reviewed and locked." },
           locked: true,
           triggerType: trigger,
         }),
@@ -196,27 +161,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch email logs for context
     const { data: emailLogs } = await supabase
-      .from("email_logs")
-      .select("*")
-      .eq("request_id", requestId)
-      .order("sent_at", { ascending: false })
-      .limit(5);
+      .from("email_logs").select("*").eq("request_id", requestId)
+      .order("sent_at", { ascending: false }).limit(5);
 
-    // Fetch document count for context
     const { count: documentCount } = await supabase
-      .from("loss_run_documents")
-      .select("*", { count: "exact", head: true })
+      .from("loss_run_documents").select("*", { count: "exact", head: true })
       .eq("request_id", requestId);
 
-    // Build context for the AI
     const now = new Date();
     const requestDate = new Date(request.request_date);
     const daysSinceRequest = Math.floor((now.getTime() - requestDate.getTime()) / (1000 * 60 * 60 * 24));
-    
     const lastEmail = emailLogs?.[0];
-    const daysSinceLastEmail = lastEmail 
+    const daysSinceLastEmail = lastEmail
       ? Math.floor((now.getTime() - new Date(lastEmail.sent_at).getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
@@ -240,7 +197,6 @@ What is the next best action for this request?`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
       return new Response(
         JSON.stringify({ success: false, error: "AI service unavailable" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -249,10 +205,7 @@ What is the next best action for this request?`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
@@ -266,24 +219,14 @@ What is the next best action for this request?`;
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ success: false, error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (response.status === 402) {
-        console.error("AI usage limit reached");
-        return new Response(
-          JSON.stringify({ success: false, error: "Service temporarily unavailable. Please try again later." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ success: false, error: "Service temporarily unavailable." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ success: false, error: "AI processing failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ success: false, error: "AI processing failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const aiResponse = await response.json();
@@ -299,26 +242,16 @@ What is the next best action for this request?`;
     const decision: AgentAction = JSON.parse(toolCall.function.arguments);
     let actionResult = { executed: false, details: "" };
 
-    // Execute the decided action
     switch (decision.action) {
       case "send_follow_up": {
-        // Check for duplicate follow-up within 7 days (168 hours)
         const isDuplicate = await checkDuplicateAction(supabase, requestId, "send_follow_up", 168);
         if (isDuplicate) {
-          actionResult = { 
-            executed: false, 
-            details: "Follow-up already sent within the last 7 days - skipping to prevent duplicate" 
-          };
+          actionResult = { executed: false, details: "Follow-up already sent within the last 7 days" };
           break;
         }
-
-        // Call the send-loss-run-email function
         const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-loss-run-email`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${supabaseServiceKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             requestId: request.id,
             clientName: request.clients?.name || "Unknown Client",
@@ -331,72 +264,49 @@ What is the next best action for this request?`;
             isFollowUp: true,
           }),
         });
-
         if (emailResponse.ok) {
-          // Update status to follow_up_sent
-          await supabase
-            .from("loss_run_requests")
-            .update({ status: "follow_up_sent" })
-            .eq("id", requestId);
+          await supabase.from("loss_run_requests").update({ status: "follow_up_sent" }).eq("id", requestId);
           actionResult = { executed: true, details: "Follow-up email sent and status updated" };
         } else {
           actionResult = { executed: false, details: "Failed to send follow-up email" };
         }
         break;
       }
-
       case "update_status": {
-        // CRITICAL: Block any attempt to set status to "completed" - requires human review
         if (decision.new_status === "completed") {
-          actionResult = { 
-            executed: false, 
-            details: "Cannot set status to 'completed' - requires human review and approval" 
-          };
+          actionResult = { executed: false, details: "Cannot set status to 'completed' - requires human review" };
           break;
         }
         if (decision.new_status) {
-          await supabase
-            .from("loss_run_requests")
-            .update({ status: decision.new_status })
-            .eq("id", requestId);
+          await supabase.from("loss_run_requests").update({ status: decision.new_status }).eq("id", requestId);
           actionResult = { executed: true, details: `Status updated to ${decision.new_status}` };
         }
         break;
       }
-
       case "add_note": {
         if (decision.note) {
           const existingNotes = request.notes || "";
           const timestamp = new Date().toISOString().split("T")[0];
-          const newNotes = existingNotes 
+          const newNotes = existingNotes
             ? `${existingNotes}\n\n[${timestamp}] Agent: ${decision.note}`
             : `[${timestamp}] Agent: ${decision.note}`;
-          
-          await supabase
-            .from("loss_run_requests")
-            .update({ notes: newNotes })
-            .eq("id", requestId);
+          await supabase.from("loss_run_requests").update({ notes: newNotes }).eq("id", requestId);
           actionResult = { executed: true, details: "Note added to request" };
         }
         break;
       }
-
       case "wait":
       default:
         actionResult = { executed: false, details: "No action needed at this time" };
         break;
     }
 
-    // Log the action taken
     await logAgentAction(supabase, requestId, trigger, decision.action, actionResult.details);
 
     return new Response(
       JSON.stringify({
         success: true,
-        decision: {
-          action: decision.action,
-          reason: decision.reason,
-        },
+        decision: { action: decision.action, reason: decision.reason },
         result: actionResult,
         triggerType: trigger,
       }),
@@ -404,7 +314,6 @@ What is the next best action for this request?`;
     );
   } catch (error) {
     console.error("Agent error:", error);
-    // Return generic error message - details are logged server-side
     return new Response(
       JSON.stringify({ success: false, error: "An error occurred processing your request" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

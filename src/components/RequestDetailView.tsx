@@ -300,7 +300,7 @@ export function RequestDetailView({ request, open, onOpenChange }: RequestDetail
                         Review Complete
                       </h3>
                       <p className="text-sm text-green-600 dark:text-green-400">
-                        Reviewed on <span className="font-semibold">{new Date(request.reviewed_at!).toLocaleDateString()}</span>
+                        Reviewed on <span className="font-semibold">{new Date(request.reviewed_at || localReviewedAt!).toLocaleDateString()}</span>
                       </p>
                       <p className="text-sm text-green-600/80 dark:text-green-400/80">
                         by {request.reviewed_by || "Unknown"}
