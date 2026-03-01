@@ -20,7 +20,6 @@ interface LossRunEmailRequest {
   senderName?: string;
   senderEmail?: string;
   agencyName?: string;
-  // Custom template support
   customSubject?: string;
   customBody?: string;
   templateId?: string;
@@ -40,12 +39,9 @@ const formatCoverageType = (type: string): string => {
 };
 
 const generateEmailContent = (data: LossRunEmailRequest): { subject: string; body: string; html: string } => {
-  // If custom content provided, use it directly
   if (data.customSubject && data.customBody) {
     const subject = data.customSubject;
     const body = data.customBody;
-    
-    // Convert plain text body to HTML with professional formatting
     const html = `
 <!DOCTYPE html>
 <html>
@@ -67,11 +63,9 @@ const generateEmailContent = (data: LossRunEmailRequest): { subject: string; bod
 </body>
 </html>
     `.trim();
-
     return { subject, body, html };
   }
 
-  // Default template generation
   const coverageTypeFormatted = formatCoverageType(data.coverageType);
   const isFollowUp = data.isFollowUp || false;
   const senderName = data.senderName || "Insurance Operations Team";
@@ -128,20 +122,15 @@ ${agencyName}`.trim();
     <div class="content">
       ${isFollowUp ? '<p style="color: #b91c1c; font-weight: 600; margin-top: 0;">Follow-up — previous request pending</p>' : ''}
       <p style="margin-top: 0;">Dear Loss Runs Department,</p>
-      
       <p>We are requesting loss run reports for the following insured:</p>
-      
       <div class="details">
         <div class="detail-row"><span class="detail-label">Insured:</span> ${data.clientName}</div>
         <div class="detail-row"><span class="detail-label">Policy Number:</span> ${data.policyNumber}</div>
         <div class="detail-row"><span class="detail-label">Line of Business:</span> ${coverageTypeFormatted}</div>
         <div class="detail-row"><span class="detail-label">Policy Period:</span> ${policyPeriod}</div>
       </div>
-      
       <p>Please provide the most recent five years of loss history, including all open and closed claims with dates of loss, descriptions, paid and reserved amounts, and current status.</p>
-      
       <p>If any additional information is needed to fulfill this request, please let us know.</p>
-      
       <div class="sig">
         <p style="margin: 0;">Thank you,</p>
         <p class="sig-name" style="margin: 4px 0 0;">${senderName}</p>
@@ -163,26 +152,36 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Authentication check - bypassed during development when no auth is implemented
+    // --- AUTH GATE ---
     const authHeader = req.headers.get("Authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-      if (SUPABASE_ANON_KEY) {
-        const authClient = createClient(Deno.env.get("SUPABASE_URL")!, SUPABASE_ANON_KEY, {
-          global: { headers: { Authorization: authHeader } }
-        });
-        const token = authHeader.replace("Bearer ", "");
-        const { data: claimsData, error: claimsError } = await authClient.auth.getUser(token);
-        if (claimsError || !claimsData?.user) {
-          console.log("Auth token invalid, proceeding without auth (dev mode)");
-        }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Allow service-role calls (from process-follow-ups) without user auth
+    const isServiceRole = authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+
+    if (!isServiceRole) {
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const token = authHeader.replace("Bearer ", "");
+      const { data: claimsData, error: claimsError } = await authClient.auth.getUser(token);
+      if (claimsError || !claimsData?.user) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
       }
     }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY not configured");
       throw new Error("Email service unavailable");
@@ -192,23 +191,16 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Service configuration error");
     }
 
-    // Use service role key for database operations
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
     const data: LossRunEmailRequest = await req.json();
 
-    // Validate required fields
     if (!data.requestId || !data.clientName || !data.carrierEmail || !data.policyNumber || !data.coverageType) {
       throw new Error("Missing required fields");
     }
 
-    // Generate email content
     const { subject, body, html } = generateEmailContent(data);
-
-    // Domain insureopsio.com is verified on Resend – send directly to the carrier.
     const recipient = data.carrierEmail;
 
-    // Send the email using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -235,7 +227,6 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResult = await emailResponse.json();
     console.log("Email sent successfully:", emailResult);
 
-    // Log the email in the database
     const emailType = data.isFollowUp ? "follow_up" : "initial_request";
     const { error: logError } = await supabase
       .from("email_logs")
@@ -250,10 +241,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (logError) {
       console.error("Error logging email:", logError);
-      // Don't throw - email was sent, just logging failed
     }
 
-    // Update request status if follow-up
     if (data.isFollowUp) {
       const { error: updateError } = await supabase
         .from("loss_run_requests")
@@ -267,20 +256,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(
       JSON.stringify({ success: true, emailId: emailResult.id }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: unknown) {
     console.error("Error in send-loss-run-email function:", error);
-    // Return generic error message - details are logged server-side
     return new Response(
       JSON.stringify({ success: false, error: "An error occurred processing your request" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };
