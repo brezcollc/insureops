@@ -31,22 +31,66 @@ Sent via InsureOps`,
   },
   {
     id: "follow_up",
-    name: "Follow-Up Loss Run Request",
+    name: "Follow-Up (Day 7)",
     subject: "Follow-Up: Loss Run Request – {{client_name}} ({{coverage_type}})",
     body: `Dear Loss Runs Department,
 
-This is a follow-up to our previous loss run request for the insured listed below. We would appreciate your prompt attention.
+This is a follow-up to our loss run request submitted approximately one week ago. We have not yet received the requested documents and wanted to check in.
 
 Insured: {{client_name}}
 Policy Number: {{policy_number}}
 Line of Business: {{coverage_type}}
 Policy Period: {{policy_period}}
 
-We are still awaiting the loss run reports for the above policy. Please provide the most recent five years of loss history at your earliest convenience.
+Please provide the most recent five years of loss history at your earliest convenience. If there is anything else needed to process this request, please let us know.
 
-If there is anything else needed to process this request, please let us know immediately.
+Thank you,
+{{sender_name}}
+{{agency_name}}
 
-Thank you for your assistance,
+Sent via InsureOps`,
+  },
+  {
+    id: "second_follow_up",
+    name: "Second Follow-Up (Day 14)",
+    subject: "Second Follow-Up: Loss Run Request – {{client_name}} ({{coverage_type}})",
+    body: `Dear Loss Runs Department,
+
+We are following up again regarding our pending loss run request for the insured listed below. This is our second follow-up and we have not yet received the requested documents.
+
+Insured: {{client_name}}
+Policy Number: {{policy_number}}
+Line of Business: {{coverage_type}}
+Policy Period: {{policy_period}}
+
+Please be advised that we are working on an upcoming renewal for this account and timely receipt of the loss runs is important to this process. We would appreciate your prompt attention to this matter.
+
+If there are any issues fulfilling this request, please contact us immediately.
+
+Thank you,
+{{sender_name}}
+{{agency_name}}
+
+Sent via InsureOps`,
+  },
+  {
+    id: "final_notice",
+    name: "Final Notice (Day 21+)",
+    subject: "URGENT – Final Notice: Loss Run Request – {{client_name}} ({{coverage_type}})",
+    body: `Dear Loss Runs Department,
+
+This is our final follow-up regarding the outstanding loss run request listed below. Despite our previous requests, we have not yet received the required documents.
+
+Insured: {{client_name}}
+Policy Number: {{policy_number}}
+Line of Business: {{coverage_type}}
+Policy Period: {{policy_period}}
+
+We are requesting that this matter be escalated within your organization. The continued delay is impacting our client's renewal process. If we do not receive the loss runs within the next 5 business days, we will need to notify our client of the delay and explore alternative options.
+
+Please contact us immediately to resolve this matter.
+
+Thank you,
 {{sender_name}}
 {{agency_name}}
 
@@ -74,6 +118,12 @@ export function applyTemplate(template: EmailTemplate, variables: TemplateVariab
   });
 
   return { subject, body };
+}
+
+export function getFollowUpTemplate(followUpNumber: number): EmailTemplate {
+  if (followUpNumber >= 3) return emailTemplates[3]; // final_notice
+  if (followUpNumber === 2) return emailTemplates[2]; // second_follow_up
+  return emailTemplates[1]; // follow_up (day 7)
 }
 
 export function formatCoverageType(type: string): string {

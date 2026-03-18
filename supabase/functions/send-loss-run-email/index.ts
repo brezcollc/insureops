@@ -17,6 +17,7 @@ interface LossRunEmailRequest {
   policyEffectiveDate?: string;
   policyExpirationDate?: string;
   isFollowUp?: boolean;
+  followUpNumber?: number; // 1 = first follow-up, 2 = second, 3 = final notice
   senderName?: string;
   senderEmail?: string;
   agencyName?: string;
@@ -67,30 +68,32 @@ const generateEmailContent = (data: LossRunEmailRequest): { subject: string; bod
   }
 
   const coverageTypeFormatted = formatCoverageType(data.coverageType);
-  const isFollowUp = data.isFollowUp || false;
+  const followUpNumber = data.followUpNumber || 0;
   const senderName = data.senderName || "Insurance Operations Team";
-  const agencyName = data.agencyName || "Acme Insurance Group";
-
-  const subject = isFollowUp
-    ? `Follow-Up: Loss Run Request – ${data.clientName} (${coverageTypeFormatted})`
-    : `Loss Run Request – ${data.clientName} (${coverageTypeFormatted})`;
+  const agencyName = data.agencyName || "";
 
   const policyPeriod = data.policyEffectiveDate && data.policyExpirationDate
     ? `${data.policyEffectiveDate} to ${data.policyExpirationDate}`
     : "All available history";
 
-  const followUpNote = isFollowUp
-    ? `\n\nThis is a follow-up to our previous request. We would appreciate your prompt attention.\n`
-    : "";
+  const insuredBlock = `Insured: ${data.clientName}
+Policy Number: ${data.policyNumber}
+Line of Business: ${coverageTypeFormatted}
+Policy Period: ${policyPeriod}`;
 
-  const body = `Dear Loss Runs Department,${followUpNote}
+  let subject: string;
+  let body: string;
+  let urgencyColor = "#2563eb";
+  let urgencyLabel = "";
+
+  if (followUpNumber === 0 || !data.isFollowUp) {
+    // Initial request
+    subject = `Loss Run Request – ${data.clientName} (${coverageTypeFormatted})`;
+    body = `Dear Loss Runs Department,
 
 We are requesting loss run reports for the following insured:
 
-Insured: ${data.clientName}
-Policy Number: ${data.policyNumber}
-Line of Business: ${coverageTypeFormatted}
-Policy Period: ${policyPeriod}
+${insuredBlock}
 
 Please provide the most recent five years of loss history, including all open and closed claims with dates of loss, descriptions, paid and reserved amounts, and current status.
 
@@ -100,6 +103,62 @@ Thank you,
 ${senderName}
 ${agencyName}`.trim();
 
+  } else if (followUpNumber === 1) {
+    // First follow-up – Day 7, friendly reminder
+    subject = `Follow-Up: Loss Run Request – ${data.clientName} (${coverageTypeFormatted})`;
+    urgencyLabel = "Follow-up — previous request pending";
+    urgencyColor = "#d97706";
+    body = `Dear Loss Runs Department,
+
+This is a follow-up to our loss run request submitted approximately one week ago. We have not yet received the requested documents and wanted to check in.
+
+${insuredBlock}
+
+Please provide the most recent five years of loss history at your earliest convenience. If there is anything else needed to process this request, please let us know.
+
+Thank you,
+${senderName}
+${agencyName}`.trim();
+
+  } else if (followUpNumber === 2) {
+    // Second follow-up – Day 14, mention renewal pressure
+    subject = `Second Follow-Up: Loss Run Request – ${data.clientName} (${coverageTypeFormatted})`;
+    urgencyLabel = "Second follow-up — action required";
+    urgencyColor = "#ea580c";
+    body = `Dear Loss Runs Department,
+
+We are following up again regarding our pending loss run request for the insured listed below. This is our second follow-up and we have not yet received the requested documents.
+
+${insuredBlock}
+
+Please be advised that we are working on an upcoming renewal for this account and timely receipt of the loss runs is important to this process. We would appreciate your prompt attention to this matter.
+
+If there are any issues fulfilling this request, please contact us immediately.
+
+Thank you,
+${senderName}
+${agencyName}`.trim();
+
+  } else {
+    // Final notice – Day 21+, escalation
+    subject = `URGENT – Final Notice: Loss Run Request – ${data.clientName} (${coverageTypeFormatted})`;
+    urgencyLabel = "FINAL NOTICE — escalation required";
+    urgencyColor = "#b91c1c";
+    body = `Dear Loss Runs Department,
+
+This is our final follow-up regarding the outstanding loss run request listed below. Despite our previous requests, we have not yet received the required documents.
+
+${insuredBlock}
+
+We are requesting that this matter be escalated within your organization. The continued delay is impacting our client's renewal process. If we do not receive the loss runs within the next 5 business days, we will need to notify our client of the delay and explore alternative options.
+
+Please contact us immediately to resolve this matter.
+
+Thank you,
+${senderName}
+${agencyName}`.trim();
+  }
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -108,6 +167,7 @@ ${agencyName}`.trim();
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background: #f9fafb; }
     .wrapper { max-width: 600px; margin: 0 auto; padding: 32px 24px; }
     .content { background: #ffffff; border-radius: 6px; padding: 32px; border: 1px solid #e5e7eb; }
+    .urgency-banner { font-weight: 600; margin-top: 0; margin-bottom: 16px; padding: 8px 12px; border-radius: 4px; font-size: 13px; }
     .details { background: #f8fafc; border-left: 3px solid #2563eb; padding: 16px; margin: 20px 0; border-radius: 0 4px 4px 0; }
     .detail-row { margin: 6px 0; font-size: 14px; }
     .detail-label { font-weight: 600; color: #374151; }
@@ -120,21 +180,37 @@ ${agencyName}`.trim();
 <body>
   <div class="wrapper">
     <div class="content">
-      ${isFollowUp ? '<p style="color: #b91c1c; font-weight: 600; margin-top: 0;">Follow-up — previous request pending</p>' : ''}
+      ${urgencyLabel ? `<p class="urgency-banner" style="color: ${urgencyColor}; background-color: ${urgencyColor}18;">${urgencyLabel}</p>` : ""}
       <p style="margin-top: 0;">Dear Loss Runs Department,</p>
-      <p>We are requesting loss run reports for the following insured:</p>
+      ${followUpNumber === 0 || !data.isFollowUp
+        ? `<p>We are requesting loss run reports for the following insured:</p>`
+        : followUpNumber === 1
+        ? `<p>This is a follow-up to our loss run request submitted approximately one week ago. We have not yet received the requested documents and wanted to check in.</p>`
+        : followUpNumber === 2
+        ? `<p>We are following up again regarding our pending loss run request for the insured listed below. This is our second follow-up and we have not yet received the requested documents.</p>`
+        : `<p>This is our final follow-up regarding the outstanding loss run request listed below. Despite our previous requests, we have not yet received the required documents.</p>`
+      }
       <div class="details">
         <div class="detail-row"><span class="detail-label">Insured:</span> ${data.clientName}</div>
         <div class="detail-row"><span class="detail-label">Policy Number:</span> ${data.policyNumber}</div>
         <div class="detail-row"><span class="detail-label">Line of Business:</span> ${coverageTypeFormatted}</div>
         <div class="detail-row"><span class="detail-label">Policy Period:</span> ${policyPeriod}</div>
       </div>
-      <p>Please provide the most recent five years of loss history, including all open and closed claims with dates of loss, descriptions, paid and reserved amounts, and current status.</p>
-      <p>If any additional information is needed to fulfill this request, please let us know.</p>
+      ${followUpNumber === 0 || !data.isFollowUp
+        ? `<p>Please provide the most recent five years of loss history, including all open and closed claims with dates of loss, descriptions, paid and reserved amounts, and current status.</p>
+           <p>If any additional information is needed to fulfill this request, please let us know.</p>`
+        : followUpNumber === 1
+        ? `<p>Please provide the most recent five years of loss history at your earliest convenience. If there is anything else needed to process this request, please let us know.</p>`
+        : followUpNumber === 2
+        ? `<p>Please be advised that we are working on an upcoming renewal for this account and timely receipt of the loss runs is important to this process. We would appreciate your prompt attention.</p>
+           <p>If there are any issues fulfilling this request, please contact us immediately.</p>`
+        : `<p>We are requesting that this matter be escalated within your organization. The continued delay is impacting our client's renewal process. If we do not receive the loss runs within the next <strong>5 business days</strong>, we will need to notify our client of the delay and explore alternative options.</p>
+           <p>Please contact us immediately to resolve this matter.</p>`
+      }
       <div class="sig">
         <p style="margin: 0;">Thank you,</p>
         <p class="sig-name" style="margin: 4px 0 0;">${senderName}</p>
-        <p class="sig-agency" style="margin: 2px 0 0;">${agencyName}</p>
+        ${agencyName ? `<p class="sig-agency" style="margin: 2px 0 0;">${agencyName}</p>` : ""}
       </div>
     </div>
     <div class="footer">Sent via InsureOps</div>
@@ -152,13 +228,11 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // --- AUTH GATE ---
     const authHeader = req.headers.get("Authorization");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Allow service-role calls (from process-follow-ups) without user auth
     const isServiceRole = authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
 
     if (!isServiceRole) {
@@ -227,7 +301,19 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResult = await emailResponse.json();
     console.log("Email sent successfully:", emailResult);
 
-    const emailType = data.isFollowUp ? "follow_up" : "initial_request";
+    // Determine email type for logging
+    const followUpNumber = data.followUpNumber || 0;
+    let emailType: string;
+    if (!data.isFollowUp || followUpNumber === 0) {
+      emailType = "initial_request";
+    } else if (followUpNumber === 1) {
+      emailType = "follow_up";
+    } else if (followUpNumber === 2) {
+      emailType = "follow_up";
+    } else {
+      emailType = "reminder";
+    }
+
     const { error: logError } = await supabase
       .from("email_logs")
       .insert({
