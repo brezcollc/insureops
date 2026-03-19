@@ -11,13 +11,124 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Upload, FileText, Trash2, Download, Loader2, Lock, Eye } from "lucide-react";
+import { Upload, FileText, Trash2, Download, Loader2, Lock, Eye, Sparkles } from "lucide-react";
 import { useRequestDocuments, useUploadDocument, useDeleteDocument, LossRunDocument } from "@/hooks/useDocumentUpload";
 import { supabase } from "@/integrations/supabase/client";
+import { useAnalyzeDocument, useDocumentAnalysis } from "@/hooks/useLossRunAnalysis";
+import { LossRunAnalysisPanel } from "@/components/LossRunAnalysisPanel";
 
 interface DocumentUploadSectionProps {
   requestId: string;
   isReviewed: boolean;
+}
+
+// Per-document row with its own analysis state
+function DocumentRow({
+  doc,
+  requestId,
+  isReviewed,
+  onView,
+  onDownload,
+  onDelete,
+  viewingDoc,
+}: {
+  doc: LossRunDocument;
+  requestId: string;
+  isReviewed: boolean;
+  onView: (doc: LossRunDocument) => void;
+  onDownload: (doc: LossRunDocument) => void;
+  onDelete: (doc: LossRunDocument) => void;
+  viewingDoc: string | null;
+}) {
+  const isPdf = doc.mime_type === "application/pdf" || doc.file_name.toLowerCase().endsWith(".pdf");
+  const analyzeDocument = useAnalyzeDocument();
+  const { data: analysis } = useDocumentAnalysis(isPdf ? doc.id : null);
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return "Unknown size";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const isAnalyzing = analyzeDocument.isPending || analysis?.status === "processing" || analysis?.status === "pending";
+  const hasAnalysis = analysis?.status === "completed" || analysis?.status === "failed";
+
+  return (
+    <div>
+      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group">
+        <div className="flex items-center gap-3 min-w-0">
+          <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{doc.file_name}</p>
+            <p className="text-xs text-muted-foreground">
+              {formatFileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleDateString()}
+              {analysis?.status === "completed" && (
+                <span className="ml-2 text-blue-600 font-medium">· AI analyzed</span>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {isPdf && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => analyzeDocument.mutate({ documentId: doc.id, requestId })}
+              disabled={isAnalyzing || isReviewed}
+              className="h-8 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              title={hasAnalysis ? "Re-analyze with AI" : "Analyze with AI"}
+            >
+              {isAnalyzing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              <span className="ml-1">{hasAnalysis ? "Re-analyze" : "Analyze"}</span>
+            </Button>
+          )}
+          {isPdf && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onView(doc)}
+              disabled={viewingDoc === doc.id}
+              className="h-8 w-8 p-0"
+              title="View document"
+            >
+              {viewingDoc === doc.id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDownload(doc)}
+            className="h-8 w-8 p-0"
+            title="Download document"
+          >
+            <Download className="w-4 h-4" />
+          </Button>
+          {!isReviewed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(doc)}
+              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+              title="Delete document"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+      {/* Analysis panel shown below the document row */}
+      {analysis && <LossRunAnalysisPanel analysis={analysis} />}
+    </div>
+  );
 }
 
 export function DocumentUploadSection({ requestId, isReviewed }: DocumentUploadSectionProps) {
@@ -105,16 +216,6 @@ export function DocumentUploadSection({ requestId, isReviewed }: DocumentUploadS
     setDocumentToDelete(null);
   };
 
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return "Unknown size";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  const isPdf = (doc: LossRunDocument) => 
-    doc.mime_type === "application/pdf" || doc.file_name.toLowerCase().endsWith(".pdf");
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -157,60 +258,18 @@ export function DocumentUploadSection({ requestId, isReviewed }: DocumentUploadS
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
       ) : documents && documents.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {documents.map((doc) => (
-            <div
+            <DocumentRow
               key={doc.id}
-              className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {isPdf(doc) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleView(doc)}
-                    disabled={viewingDoc === doc.id}
-                    className="h-8 w-8 p-0"
-                    title="View document"
-                  >
-                    {viewingDoc === doc.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDownload(doc)}
-                  className="h-8 w-8 p-0"
-                  title="Download document"
-                >
-                  <Download className="w-4 h-4" />
-                </Button>
-                {!isReviewed && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDocumentToDelete(doc)}
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    title="Delete document"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
+              doc={doc}
+              requestId={requestId}
+              isReviewed={isReviewed}
+              onView={handleView}
+              onDownload={handleDownload}
+              onDelete={setDocumentToDelete}
+              viewingDoc={viewingDoc}
+            />
           ))}
         </div>
       ) : (
