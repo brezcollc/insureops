@@ -49,7 +49,7 @@ export function useDocumentAnalysis(documentId: string | null) {
         .single();
 
       if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows
-      return data as LossRunAnalysis | null;
+      return data as unknown as LossRunAnalysis | null;
     },
     enabled: !!documentId,
     // Poll every 3 seconds while processing
