@@ -70,7 +70,7 @@ export function useAnalyzeDocument() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      const supabaseUrl = (supabase as any).supabaseUrl as string;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
       const response = await fetch(`${supabaseUrl}/functions/v1/analyze-loss-run`, {
         method: "POST",
         headers: {
