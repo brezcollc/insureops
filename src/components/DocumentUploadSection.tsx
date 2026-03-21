@@ -75,7 +75,7 @@ function DocumentRow({
               variant="ghost"
               size="sm"
               onClick={() => analyzeDocument.mutate({ documentId: doc.id, requestId })}
-              disabled={isAnalyzing || isReviewed}
+              disabled={isAnalyzing}
               className="h-8 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
               title={hasAnalysis ? "Re-analyze with AI" : "Analyze with AI"}
             >
