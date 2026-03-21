@@ -224,6 +224,106 @@ export type Database = {
         }
         Relationships: []
       }
+      loss_run_analyses: {
+        Row: {
+          analyzed_at: string | null
+          carrier_name: string | null
+          closed_claims: number | null
+          created_at: string
+          document_id: string
+          error_message: string | null
+          id: string
+          largest_claim_amount: number | null
+          largest_claim_date: string | null
+          largest_claim_description: string | null
+          open_claims: number | null
+          organization_id: string
+          policy_period: string | null
+          request_id: string
+          risk_observations: Json | null
+          status: string
+          summary: string | null
+          total_claims: number | null
+          total_incurred: number | null
+          total_paid: number | null
+          total_reserved: number | null
+          trend: string | null
+          yearly_breakdown: Json | null
+        }
+        Insert: {
+          analyzed_at?: string | null
+          carrier_name?: string | null
+          closed_claims?: number | null
+          created_at?: string
+          document_id: string
+          error_message?: string | null
+          id?: string
+          largest_claim_amount?: number | null
+          largest_claim_date?: string | null
+          largest_claim_description?: string | null
+          open_claims?: number | null
+          organization_id: string
+          policy_period?: string | null
+          request_id: string
+          risk_observations?: Json | null
+          status?: string
+          summary?: string | null
+          total_claims?: number | null
+          total_incurred?: number | null
+          total_paid?: number | null
+          total_reserved?: number | null
+          trend?: string | null
+          yearly_breakdown?: Json | null
+        }
+        Update: {
+          analyzed_at?: string | null
+          carrier_name?: string | null
+          closed_claims?: number | null
+          created_at?: string
+          document_id?: string
+          error_message?: string | null
+          id?: string
+          largest_claim_amount?: number | null
+          largest_claim_date?: string | null
+          largest_claim_description?: string | null
+          open_claims?: number | null
+          organization_id?: string
+          policy_period?: string | null
+          request_id?: string
+          risk_observations?: Json | null
+          status?: string
+          summary?: string | null
+          total_claims?: number | null
+          total_incurred?: number | null
+          total_paid?: number | null
+          total_reserved?: number | null
+          trend?: string | null
+          yearly_breakdown?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loss_run_analyses_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "loss_run_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loss_run_analyses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loss_run_analyses_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "loss_run_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loss_run_documents: {
         Row: {
           client_id: string | null
