@@ -132,24 +132,52 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create or update analysis record to "processing"
-    const { data: analysisRecord, error: insertError } = await supabase
+    // Check for existing analysis record for this document
+    const { data: existingRecord } = await supabase
       .from("loss_run_analyses")
-      .upsert({
-        document_id: documentId,
-        request_id: requestId,
-        organization_id: document.organization_id,
-        status: "processing",
-      }, { onConflict: "document_id" })
-      .select()
-      .single();
+      .select("id")
+      .eq("document_id", documentId)
+      .limit(1)
+      .maybeSingle();
 
-    if (insertError || !analysisRecord) {
-      console.error("Failed to create analysis record:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to start analysis" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+    let analysisRecord: { id: string };
+
+    if (existingRecord) {
+      // Update existing record to reprocess
+      const { data: updated, error: updateErr } = await supabase
+        .from("loss_run_analyses")
+        .update({ status: "processing", error_message: null })
+        .eq("id", existingRecord.id)
+        .select("id")
+        .single();
+      if (updateErr || !updated) {
+        console.error("Failed to update analysis record:", updateErr);
+        return new Response(
+          JSON.stringify({ error: "Failed to start analysis" }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      analysisRecord = updated;
+    } else {
+      // Create new record
+      const { data: inserted, error: insertErr } = await supabase
+        .from("loss_run_analyses")
+        .insert({
+          document_id: documentId,
+          request_id: requestId,
+          organization_id: document.organization_id,
+          status: "processing",
+        })
+        .select("id")
+        .single();
+      if (insertErr || !inserted) {
+        console.error("Failed to create analysis record:", insertErr);
+        return new Response(
+          JSON.stringify({ error: "Failed to start analysis" }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      analysisRecord = inserted;
     }
 
     // Download the PDF from Supabase storage
