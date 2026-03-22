@@ -272,6 +272,35 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields");
     }
 
+    // Verify the recipient email belongs to a real request in the database
+    const { data: requestRecord, error: requestError } = await supabase
+      .from("loss_run_requests")
+      .select("id, carrier_email")
+      .eq("id", data.requestId)
+      .single();
+
+    if (requestError || !requestRecord) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (requestRecord.carrier_email !== data.carrierEmail) {
+      return new Response(
+        JSON.stringify({ error: "Recipient mismatch" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Sanitize any custom content - strip HTML and enforce length limits
+    if (data.customSubject) {
+      data.customSubject = data.customSubject.replace(/<[^>]*>/g, "").substring(0, 200);
+    }
+    if (data.customBody) {
+      data.customBody = data.customBody.replace(/<[^>]*>/g, "").substring(0, 5000);
+    }
+
     const { subject, body, html } = generateEmailContent(data);
     const recipient = data.carrierEmail;
 
