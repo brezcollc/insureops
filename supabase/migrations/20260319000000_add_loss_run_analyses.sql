@@ -55,11 +55,19 @@ CREATE POLICY "Users can insert analyses for their organization"
     SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
   ));
 
-CREATE POLICY "Service role can manage all analyses"
+CREATE POLICY "org_analyses_update"
   ON public.loss_run_analyses
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  FOR UPDATE
+  USING (organization_id IN (
+    SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "org_analyses_delete"
+  ON public.loss_run_analyses
+  FOR DELETE
+  USING (organization_id IN (
+    SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+  ));
 
 -- Index for fast lookups by document and request
 CREATE INDEX IF NOT EXISTS loss_run_analyses_document_id_idx ON public.loss_run_analyses(document_id);
