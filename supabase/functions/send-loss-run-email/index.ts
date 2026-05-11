@@ -234,6 +234,7 @@ const handler = async (req: Request): Promise<Response> => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const isServiceRole = authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+    let callerUserId: string | null = null;
 
     if (!isServiceRole) {
       if (!authHeader?.startsWith("Bearer ")) {
@@ -253,6 +254,7 @@ const handler = async (req: Request): Promise<Response> => {
           { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
+      callerUserId = claimsData.user.id;
     }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -275,7 +277,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Verify the recipient email belongs to a real request in the database
     const { data: requestRecord, error: requestError } = await supabase
       .from("loss_run_requests")
-      .select("id, carrier_email")
+      .select("id, carrier_email, organization_id")
       .eq("id", data.requestId)
       .single();
 
@@ -293,12 +295,28 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // For non-service-role callers, ensure the user belongs to the request's organization
+    if (!isServiceRole && callerUserId) {
+      const { data: membership } = await supabase
+        .from("organization_members")
+        .select("organization_id")
+        .eq("user_id", callerUserId)
+        .eq("organization_id", requestRecord.organization_id)
+        .maybeSingle();
+      if (!membership) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden" }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+
     // Sanitize any custom content - strip HTML and enforce length limits
     if (data.customSubject) {
       data.customSubject = data.customSubject.replace(/<[^>]*>/g, "").substring(0, 200);
     }
     if (data.customBody) {
-      data.customBody = data.customBody.replace(/<[^>]*>/g, "").substring(0, 5000);
+      data.customBody = data.customBody.replace(/<[^>]*>/g, "").substring(0, 2000);
     }
 
     const { subject, body, html } = generateEmailContent(data);

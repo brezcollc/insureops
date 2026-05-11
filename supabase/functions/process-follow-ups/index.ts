@@ -50,10 +50,10 @@ async function addNoteToRequest(supabase: any, requestId: string, note: string, 
   if (error) console.error("Error adding note:", error);
 }
 
-async function logAgentAction(supabase: any, requestId: string, actionTaken: string, actionResult: string): Promise<void> {
+async function logAgentAction(supabase: any, requestId: string, actionTaken: string, actionResult: string, organizationId?: string | null): Promise<void> {
   try {
     const { error } = await supabase.from("agent_action_logs").insert([{
-      request_id: requestId, trigger_type: "follow_up", action_taken: actionTaken, action_result: actionResult,
+      request_id: requestId, trigger_type: "follow_up", action_taken: actionTaken, action_result: actionResult, organization_id: organizationId ?? null,
     }]);
     if (error) console.error("Error logging agent action:", error);
   } catch (e) { console.error("Exception logging agent action:", e); }
@@ -138,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
               `Maximum follow-ups reached (${MAX_FOLLOW_UPS} sent with no response). Manual escalation required — consider calling the carrier directly.`,
               request.notes
             );
-            await logAgentAction(supabase, request.id, "flagged", `Max follow-ups (${MAX_FOLLOW_UPS}) reached. Human escalation required.`);
+            await logAgentAction(supabase, request.id, "flagged", `Max follow-ups (${MAX_FOLLOW_UPS}) reached. Human escalation required.`, request.organization_id);
             results.push({ requestId: request.id, success: true, action: "flagged_for_escalation" });
           } else {
             results.push({ requestId: request.id, success: false, action: "skipped", error: "Already flagged for escalation" });
@@ -206,14 +206,15 @@ const handler = async (req: Request): Promise<Response> => {
           supabase,
           request.id,
           "send_follow_up",
-          `Auto ${followUpLabel} follow-up sent (${daysSinceRequest} days since original request, ${daysSinceLastContact} days since last contact)`
+          `Auto ${followUpLabel} follow-up sent (${daysSinceRequest} days since original request, ${daysSinceLastContact} days since last contact)`,
+          request.organization_id
         );
 
         results.push({ requestId: request.id, success: true, action: `follow_up_${followUpNumber}` });
 
       } catch (error) {
         console.error(`Error processing request ${request.id}:`, error);
-        await logAgentAction(supabase, request.id, "send_follow_up", `Failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+        await logAgentAction(supabase, request.id, "send_follow_up", `Failed: ${error instanceof Error ? error.message : "Unknown error"}`, request.organization_id);
         results.push({ requestId: request.id, success: false, action: "error", error: error instanceof Error ? error.message : "Unknown error" });
       }
     }

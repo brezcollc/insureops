@@ -11,7 +11,7 @@ interface SignupNotificationRequest {
   timestamp: string;
 }
 
-const ADMIN_EMAIL = "brezcollc@gmail.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL");
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -23,6 +23,10 @@ const handler = async (req: Request): Promise<Response> => {
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY not configured");
       throw new Error("Email service unavailable");
+    }
+    if (!ADMIN_EMAIL) {
+      console.error("ADMIN_EMAIL not configured");
+      throw new Error("Notification recipient not configured");
     }
 
     const data: SignupNotificationRequest = await req.json();
