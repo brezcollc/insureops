@@ -38,11 +38,11 @@ async function checkDuplicateAction(
 }
 
 async function logAgentAction(
-  supabase: any, requestId: string, triggerType: TriggerType, actionTaken: string, actionResult: string
+  supabase: any, requestId: string, triggerType: TriggerType, actionTaken: string, actionResult: string, organizationId?: string | null
 ): Promise<void> {
   try {
     const { error } = await supabase.from("agent_action_logs").insert([{
-      request_id: requestId, trigger_type: triggerType, action_taken: actionTaken, action_result: actionResult,
+      request_id: requestId, trigger_type: triggerType, action_taken: actionTaken, action_result: actionResult, organization_id: organizationId ?? null,
     }]);
     if (error) console.error("Error logging agent action:", error);
   } catch (e) { console.error("Exception logging agent action:", e); }
@@ -147,8 +147,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Verify caller belongs to this request's organization
+    const { data: membership } = await authClient
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", userData.user.id)
+      .eq("organization_id", request.organization_id)
+      .maybeSingle();
+    if (!membership) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Forbidden" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const orgId = request.organization_id as string | null;
+
     if (request.reviewed_at) {
-      await logAgentAction(supabase, requestId, trigger, "blocked", "Request is reviewed and locked");
+      await logAgentAction(supabase, requestId, trigger, "blocked", "Request is reviewed and locked", orgId);
       return new Response(
         JSON.stringify({
           success: true,
@@ -301,7 +316,7 @@ What is the next best action for this request?`;
         break;
     }
 
-    await logAgentAction(supabase, requestId, trigger, decision.action, actionResult.details);
+    await logAgentAction(supabase, requestId, trigger, decision.action, actionResult.details, orgId);
 
     return new Response(
       JSON.stringify({
