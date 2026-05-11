@@ -109,6 +109,20 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Verify caller belongs to the document's organization
+    const { data: membership } = await authClient
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", userData.user.id)
+      .eq("organization_id", document.organization_id)
+      .maybeSingle();
+    if (!membership) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Only analyze PDFs
     if (document.mime_type !== "application/pdf" && !document.file_name.toLowerCase().endsWith(".pdf")) {
       return new Response(
