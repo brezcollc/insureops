@@ -57,9 +57,11 @@ const Index = () => {
   const showSearch = activeTab !== "settings" && activeTab !== "help";
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background relative">
+      {/* Institutional indigo top bar */}
+      <div className="fixed top-0 left-0 right-0 z-[60] h-[3px]" style={{ background: '#4F46E5' }} />
       <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen border-l border-border">
         <Header 
           searchQuery={searchQuery} 
           onSearchChange={handleSearchChange} 
