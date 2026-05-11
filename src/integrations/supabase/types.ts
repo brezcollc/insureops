@@ -20,6 +20,7 @@ export type Database = {
           action_taken: string
           created_at: string
           id: string
+          organization_id: string | null
           request_id: string
           trigger_type: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           action_taken: string
           created_at?: string
           id?: string
+          organization_id?: string | null
           request_id: string
           trigger_type: string
         }
@@ -36,6 +38,7 @@ export type Database = {
           action_taken?: string
           created_at?: string
           id?: string
+          organization_id?: string | null
           request_id?: string
           trigger_type?: string
         }
