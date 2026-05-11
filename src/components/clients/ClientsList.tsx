@@ -176,13 +176,16 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">Clients</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-3xl font-extrabold text-foreground" style={{ letterSpacing: '-0.02em' }}>Clients</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             {totalCount} client{totalCount !== 1 ? "s" : ""}
             {isFetching && <Loader2 className="inline w-3 h-3 ml-2 animate-spin" />}
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button
+          onClick={() => setIsCreateOpen(true)}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-md h-10 px-5 shadow-[0_4px_14px_rgba(79,70,229,0.35)]"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Add Client
         </Button>
@@ -245,27 +248,29 @@ export function ClientsList({ onClientSelect }: ClientsListProps) {
         {clients.map((client) => (
           <div
             key={client.id}
-            className={`group relative bg-card rounded-xl border-2 border-border shadow-sm hover:shadow-md hover:border-primary/40 cursor-pointer transition-all duration-200 ${
+            className={`group relative bg-card rounded-md border border-border cursor-pointer transition-all duration-200 hover:border-primary/60 hover:shadow-[0_0_0_1px_rgba(79,70,229,0.4),0_8px_24px_rgba(79,70,229,0.08)] hover:-translate-y-[1px] overflow-hidden ${
               client.status === "archived" ? "opacity-60" : ""
             }`}
             onClick={() => onClientSelect(client.id)}
           >
+            {/* Indigo left border accent on hover */}
+            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="p-4">
               {/* Header */}
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
                   <Building2 className="w-5 h-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-foreground truncate">{client.name}</p>
+                    <p className="font-bold text-foreground truncate" style={{ letterSpacing: '-0.01em' }}>{client.name}</p>
                     {client.status === "archived" && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">Archived</Badge>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0 rounded-[3px] uppercase font-bold tracking-wider">Archived</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     {client.client_code && (
-                      <span className="text-xs font-semibold text-foreground/70 font-mono bg-muted/80 border border-border/60 px-2 py-0.5 rounded">
+                      <span className="text-[11px] font-bold text-foreground font-mono bg-muted border border-border px-1.5 py-0.5 rounded-[3px] uppercase tracking-wider">
                         {client.client_code}
                       </span>
                     )}

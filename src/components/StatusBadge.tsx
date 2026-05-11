@@ -10,38 +10,38 @@ interface StatusBadgeProps {
 const statusConfig: Record<StatusType, { label: string; className: string; dotColor: string }> = {
   pending: {
     label: "Pending",
-    className: "bg-muted text-muted-foreground border-border/60",
-    dotColor: "bg-muted-foreground/50",
+    className: "bg-[#C9A84C] text-[#1A1505] border-[#C9A84C]/40",
+    dotColor: "bg-[#1A1505]",
   },
   "in-progress": {
     label: "In Progress",
-    className: "bg-status-in-progress-bg text-status-in-progress border-status-in-progress/20",
-    dotColor: "bg-status-in-progress",
+    className: "bg-primary/15 text-primary border-primary/30",
+    dotColor: "bg-primary",
   },
   completed: {
-    label: "Completed",
-    className: "bg-status-completed-bg text-status-completed border-status-completed/20",
-    dotColor: "bg-status-completed",
+    label: "Complete",
+    className: "bg-[#16A34A] text-[#04140B] border-[#16A34A]/40",
+    dotColor: "bg-[#04140B]",
   },
   review: {
     label: "Under Review",
-    className: "bg-muted text-muted-foreground border-border/60",
+    className: "bg-secondary text-foreground border-border",
     dotColor: "bg-muted-foreground/50",
   },
   requested: {
     label: "Requested",
-    className: "bg-primary/8 text-primary border-primary/15",
+    className: "bg-primary/10 text-primary border-primary/30",
     dotColor: "bg-primary",
   },
   follow_up_sent: {
     label: "Follow-Up Sent",
-    className: "bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700/30",
-    dotColor: "bg-amber-500",
+    className: "bg-[#C9A84C]/20 text-[#C9A84C] border-[#C9A84C]/40",
+    dotColor: "bg-[#C9A84C]",
   },
   received: {
     label: "Received",
-    className: "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-700/30",
-    dotColor: "bg-emerald-500",
+    className: "bg-[#16A34A]/20 text-[#16A34A] border-[#16A34A]/40",
+    dotColor: "bg-[#16A34A]",
   },
 };
 
@@ -51,7 +51,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
+        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[3px] text-[11px] font-bold uppercase tracking-wider border",
         config.className,
         className
       )}
